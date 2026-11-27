@@ -74,7 +74,13 @@ const starsTxt = (r: RarityId) => (r === 'secret' ? '✷' : '★'.repeat(starCou
 const ava = (name: string, url?: string) => (url ? `<img class="gm-ava" src="${esc(url)}" alt="">` : `<span class="gm-ava">${esc(name.slice(0, 1))}</span>`);
 /** heure de tirage : « 20 h » / « 8 pm » */
 const hourLabel = (x: number) => (lang() === 'fr' ? `${x} h` : `${x % 12 || 12} ${x < 12 ? 'am' : 'pm'}`);
-const packChip = (p: PackChoice, i?: number) => `<span class="gm-pack ${p.kind === 'bebou' ? 'bebou' : `t-${p.themeId}`}"${i !== undefined ? ` data-i="${i}"` : ''}>${esc(packChoiceLabel(p).replace(' Pack', ''))}</span>`; // i18n-ok
+const packChip = (p: PackChoice, i?: number) => `<span class="gm-pack ${p.kind === 'bebou' ? 'bebou' : `t-${p.themeId}`}"${i !== undefined ? ` data-i="${i}" title="${tr('gm.changeKind')}"` : ''}>${esc(packChoiceLabel(p).replace(' Pack', ''))}</span>`; // i18n-ok
+/**
+ * (V3, lot social — « moins de texte ») règles d'un jeu : 3 étapes courtes, numérotées, toujours visibles ; le texte
+ * complet replié dessous (« Règles complètes »), pour qui le veut.
+ */
+const rulesSteps = (steps: string[], full: string) =>
+  `<div class="gm-steps"><ol>${steps.map((s, i) => `<li><b>${i + 1}</b><span>${s}</span></li>`).join('')}</ol><details class="gm-rules-full"><summary>${tr('gm.fullRules')}</summary><p class="gm-rules muted">${full}</p></details></div>`;
 const stakeLine = (s: Stake) => (s.coins || s.cards.length ? `${s.coins ? coinsHtml(s.coins) : ''}${s.cards.length ? ` <span class="gm-cards-n">${plural(s.cards.reduce((a, c) => a + c.count, 0), 'carte')}</span>` : ''} <span class="muted">= ${fmtCoins(stakeValue(s))}</span>` : '<span class="muted">' + tr('gm.noSidePot') + '</span>');
 /** « 2 cartes 4★ + 1 carte 5★ » : ce qu'on engage, par étoile */
 const cardsSummary = (l: Array<{ rarity: RarityId; count: number }>) => {
@@ -410,12 +416,14 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     let ready = false;
     const valueLine = () => {
       const v = stakeValue(st.stake);
+      // (V3, moins de texte) pas de pot annexe, rien à comparer : pas de ligne
+      if (!v && o.target === undefined) return '';
       return `${tr('gm.potValue')} <b>${fmtCoins(v)}</b>${o.target !== undefined ? ` <span class="${Math.abs(v - o.target) <= 0.05 * Math.max(v, o.target) ? 'ok' : 'warn'}">(${tr('gm.facing')} ${fmtCoins(o.target)}, ±5 %)</span>` : ''} <span class="muted">· solde : ${fmtCoins(balance())}</span>`;
     };
     const render = () => {
       host.innerHTML = `<div class="gm-ed"><div class="gm-ed-h">${esc(o.title)}</div>
         <div class="gm-ed-row"><span>${tr('gm.boosters')}</span><span class="gm-packs">${st.packs.map((p, i) => packChip(p, i)).join('')}</span>${o.fixedCount ? '' : `<span class="gm-step"><button class="btn-ghost sm" data-a="-" aria-label="Un booster de moins"${st.packs.length <= 1 ? ' disabled' : ''}>−</button><output aria-live="polite">${st.packs.length}<small>/${DUEL_MAX_PACKS}</small></output><button class="btn-ghost sm" data-a="+" aria-label="${tr('gm.addPack')}"${st.packs.length >= DUEL_MAX_PACKS ? ' disabled' : ''}>+</button></span>`}</div>
-        <div class="muted">${tr('gm.tapPack', { n: packsLeft() })}</div>
+        <div class="muted gm-reserve">${tr('gm.reserveN', { n: packsLeft() })}</div>
         <div class="gm-ed-row"><span>Pot annexe</span><label class="gm-coin-in">${COIN_ICON}<input type="number" min="0" max="${balance()}" step="10" value="${st.stake.coins}" inputmode="numeric" aria-label="${tr('gm.potCoins')}"></label><button class="btn-ghost sm gm-pick">${tr('gm.cardsBtn', { x: st.stake.cards.length ? ` (${st.stake.cards.reduce((a, c) => a + c.count, 0)})` : '' })}</button></div>
         <div class="gm-ed-v">${valueLine()}</div>
         ${st.stake.cards.length ? `<div class="gm-mini-cards">${st.stake.cards.map((c) => `<span class="gm-mc r-${c.rarity}" style="--rc:${rarity(c.rarity).hex}">${starsTxt(c.rarity)} ${esc(cardName(c.cardId))}${c.count > 1 ? ` ×${c.count}` : ''}</span>`).join('')}</div>` : ''}
@@ -472,7 +480,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   let challenge = '';
   function duelLobby() {
     body.innerHTML = `<div class="gm-cols"><div class="gm-panel gm-create"></div><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.openDuels')}</b></div><div class="gm-list"></div></div></div>
-      <div class="gm-rules muted">${tr('gm.duelRules')}</div>`;
+      ${rulesSteps([tr('gm.stepDuel1'), tr('gm.stepDuel2'), tr('gm.stepWin')], tr('gm.duelRules'))}`;
     const cr = body.querySelector<HTMLElement>('.gm-create')!;
     const edHost = h('div');
     const friends = backend.state.friends;
@@ -842,14 +850,14 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
   // ═════════════════════════════ Battle Royale
   function royaleLobby() {
     body.innerHTML = `<div class="gm-cols"><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.startRoyale')}</b></div><div class="gm-r-new"></div></div><div class="gm-panel"><div class="gm-ph"><b>${tr('gm.gamesWaiting')}</b></div><div class="gm-list"></div></div></div>
-      <div class="gm-rules muted">${tr('gm.royaleRules', { min: ROYALE_MIN, max: ROYALE_MAX, packs: ROYALE_MAX_PACKS })}</div>`;
+      ${rulesSteps([tr('gm.stepRoyale1', { min: ROYALE_MIN, max: ROYALE_MAX }), tr('gm.stepRoyale2'), tr('gm.stepWin')], tr('gm.royaleRules', { min: ROYALE_MIN, max: ROYALE_MAX, packs: ROYALE_MAX_PACKS }))}`;
     let pick: PackChoice = { kind: 'bebou' };
     let count = 1;
     const nw = body.querySelector<HTMLElement>('.gm-r-new')!;
     const drawNew = () => {
       // (08/11) mise multi-boosters : nombre fixé à la création, identique pour tous les joueurs
       const counts = Array.from({ length: ROYALE_MAX_PACKS }, (_, i) => i + 1);
-      nw.innerHTML = `<div class="gm-rcount"><span class="muted">${tr('gm.perPlayer')}</span>${counts.map((n) => `<button class="gm-pack-b gm-rc${n === count ? ' on' : ''}" data-n="${n}" aria-pressed="${n === count}">${n}</button>`).join('')}</div><div class="gm-packs">${packChoices().map((p, i) => `<button class="gm-pack-b${p.kind === pick.kind && p.themeId === pick.themeId ? ' on' : ''}" data-i="${i}">${packChip(p)}</button>`).join('')}</div><button class="btn-primary gm-r-go">${tr('gm.createEach', { packs: plural(count, 'booster') })}</button><div class="muted">${tr('gm.reserveDebit', { n: packsLeft(), d: count })}</div>`;
+      nw.innerHTML = `<div class="gm-rcount"><span class="muted">${tr('gm.perPlayer')}</span>${counts.map((n) => `<button class="gm-pack-b gm-rc${n === count ? ' on' : ''}" data-n="${n}" aria-pressed="${n === count}">${n}</button>`).join('')}</div><div class="gm-packs">${packChoices().map((p, i) => `<button class="gm-pack-b${p.kind === pick.kind && p.themeId === pick.themeId ? ' on' : ''}" data-i="${i}">${packChip(p)}</button>`).join('')}</div><button class="btn-primary gm-r-go">${tr('gm.createEach', { packs: plural(count, 'booster') })}</button><div class="muted gm-reserve">${tr('gm.reserveShort', { n: packsLeft(), d: count })}</div>`;
       nw.querySelectorAll<HTMLElement>('[data-i]').forEach((b) => b.addEventListener('click', () => ((pick = packChoices()[Number(b.dataset.i)]), drawNew())));
       nw.querySelectorAll<HTMLElement>('[data-n]').forEach((b) => b.addEventListener('click', () => ((count = Number(b.dataset.n)), drawNew())));
       nw.querySelector<HTMLElement>('.gm-r-go')!.addEventListener('click', (e) => {
