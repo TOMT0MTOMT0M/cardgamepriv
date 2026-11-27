@@ -5,6 +5,7 @@
  *  - durée au choix 1 / 2 / 3 jours : clôture à 21 h (heure de Paris) le jour d'échéance = date de mise en vente
  *    (à Paris) + 1, 2 ou 3 jours. Une tâche programmée (convex/crons.ts) passe toutes les heures et clôt les échues ;
  *  - surenchère minimale : +5 % de l'offre en tête, au moins +1 pièce ;
+ *  - (28/11, décision de Tom) une offre dans les 5 dernières minutes prolonge l'enchère jusqu'à « offre + 5 min » ;
  *  - les pièces de l'enchérisseur sont prises à l'offre, rendues aussitôt s'il est dépassé ;
  *  - la carte quitte la collection du vendeur à la mise en vente (comme une vente à prix fixe) et occupe une des
  *    MARKET_MAX_OPEN places ; retrait possible tant que personne n'a fait d'offre.
@@ -21,6 +22,10 @@ export type AuctionDays = (typeof AUCTION_DAYS)[number];
 export const AUCTION_CLOSE_HOUR = 21;
 /** surenchère minimale : +5 % */
 export const AUCTION_STEP = 0.05;
+/** (décision de Tom, 28/11) anti-dernière-minute : une offre dans les 5 dernières minutes repousse la fin à « offre + 5 min » */
+export const AUCTION_EXTEND_MS = 5 * 60_000;
+/** fin après une offre reçue à `now` : inchangée hors des 5 dernières minutes, sinon `now` + 5 min (jamais avancée) */
+export const auctionEndAfterBid = (endsAt: number, now: number) => (endsAt - now <= AUCTION_EXTEND_MS ? Math.max(endsAt, now + AUCTION_EXTEND_MS) : endsAt);
 
 /** mise à prix minimale = valeur de Forge de la carte (à rendement plein) */
 export const auctionMinStart = (r: RarityId | string) => Math.max(1, CARD_VALUE[r as RarityId] ?? 0);

@@ -253,7 +253,9 @@ export interface AuctionItem {
   lead: boolean;
   status: 'open' | 'sold' | 'unsold' | 'cancelled';
   createdAt: number;
+  /** fin réelle (prolongée par une offre des 5 dernières minutes) */
   endsAt: number;
+  extended?: boolean;
   resolvedAt?: number;
 }
 export interface AuctionBoard {

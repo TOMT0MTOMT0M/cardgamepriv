@@ -223,6 +223,59 @@ describe('enchères', () => {
     }
   });
 
+  test('prolongation : offre à 20 h 57 → 21 h 02, puis à 21 h 01 → 21 h 06 ; la tâche de 21 h 01 ne clôt pas ; clôture programmée une seule fois ; hors fenêtre : inchangée', async () => {
+    // 27/11/2026 : heure d'hiver, Paris = UTC+1 → 21 h Paris = 20 h UTC
+    const at = (h: number, m: number) => Date.UTC(2026, 10, 27, h - 1, m);
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(at(10, 0));
+      const { t, alice, bob, dave } = await setup();
+      await give(t, alice.userId, A, 1);
+      await give(t, alice.userId, commons[1], 1);
+      const { id } = await t.mutation(api.auctions.create, { sessionToken: alice.token, cardId: A, rarity: 'common', startPrice: 5, days: 1 });
+      const { id: id2 } = await t.mutation(api.auctions.create, { sessionToken: alice.token, cardId: commons[1], rarity: 'common', startPrice: 5, days: 1 });
+      // clôture prévue ce soir 21 h (on ramène la fin du lendemain à aujourd'hui pour l'essai)
+      await t.run(async (ctx) => {
+        await ctx.db.patch(id, { endsAt: at(21, 0) });
+        await ctx.db.patch(id2, { endsAt: at(21, 0) });
+      });
+      const endOf = (x: Id<'auctions'>) => t.run(async (ctx) => (await ctx.db.get(x))!);
+      // hors fenêtre (20 h 50, 10 min avant) : fin inchangée, rien de programmé
+      vi.setSystemTime(at(20, 50));
+      await t.mutation(api.auctions.bid, { sessionToken: dave.token, id: id2, amount: 5 });
+      expect((await endOf(id2)).endsAt).toBe(at(21, 0));
+      expect((await endOf(id2)).extended).toBeUndefined();
+      // 20 h 57 → 21 h 02
+      vi.setSystemTime(at(20, 57));
+      expect(await t.mutation(api.auctions.bid, { sessionToken: bob.token, id, amount: 5 })).toEqual({ bid: 5, endsAt: at(21, 2) });
+      // 21 h 01 → 21 h 06
+      vi.setSystemTime(at(21, 1));
+      await t.mutation(api.auctions.bid, { sessionToken: dave.token, id, amount: 6 });
+      expect(await endOf(id)).toMatchObject({ endsAt: at(21, 6), extended: true, status: 'open' });
+      expect((await t.query(api.auctions.board, {})).open.find((a) => a.id === id)).toMatchObject({ extended: true, endsAt: at(21, 6) });
+      // la tâche horaire de 21 h 01 clôt l'enchère non prolongée, pas la prolongée
+      expect(await t.mutation(internal.auctions.closeTick, {})).toEqual({ closed: 1 });
+      expect((await endOf(id2)).status).toBe('sold');
+      expect((await endOf(id)).status).toBe('open');
+      // les deux clôtures programmées (21 h 02 puis 21 h 06) : seule la seconde clôt
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      const done = await endOf(id);
+      expect(done).toMatchObject({ status: 'sold', bid: 6 });
+      expect(done.resolvedAt! - at(21, 6)).toBeGreaterThanOrEqual(0);
+      expect(done.resolvedAt! - at(21, 6)).toBeLessThan(1000); // à 21 h 06, pas à 21 h 02
+      expect(await coinsOf(t, alice.userId)).toBe(5 + 6);
+      expect(await countOf(t, dave.token)).toBe(1);
+      expect(await countOf(t, dave.token, commons[1])).toBe(1);
+      const sells = await t.run((ctx) => ctx.db.query('coinTx').withIndex('by_user', (q) => q.eq('userId', alice.userId)).collect());
+      expect(sells.filter((x) => x.reason === 'auction-sell')).toHaveLength(2); // une par enchère, jamais deux
+      // filet rejoué : sans effet
+      expect(await t.mutation(internal.auctions.closeTick, {})).toEqual({ closed: 0 });
+      expect(await t.mutation(internal.auctions.closeAt, { id })).toEqual({ closed: false });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test('une carte engagée dans un échange en attente ne part pas aux enchères', async () => {
     const { t, alice, bob } = await setup();
     await give(t, alice.userId, A, 1);

@@ -676,7 +676,10 @@ export default defineSchema({
     /** `open` · `sold` (gagnée) · `unsold` (close sans offre, carte rendue) · `cancelled` (retirée avant toute offre) */
     status: v.union(v.literal('open'), v.literal('sold'), v.literal('unsold'), v.literal('cancelled')),
     createdAt: v.number(),
+    /** fin réelle (21 h Paris, ou plus tard si une offre de dernière minute l'a prolongée) */
     endsAt: v.number(),
+    /** (28/11) prolongée par une offre des 5 dernières minutes : sa clôture est programmée (`closeAt`) */
+    extended: v.optional(v.boolean()),
     resolvedAt: v.optional(v.number()),
   })
     /** tableau (ouvertes, la plus proche de la fin d'abord) et clôture (ouvertes échues) */

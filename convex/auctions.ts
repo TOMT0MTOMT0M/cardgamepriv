@@ -8,7 +8,7 @@ import { catalogCard, rarityValidator } from './cardsCatalog';
 import { addCoins, giveCards, recordFlow, takeCards } from './econLib';
 import { MARKET_MAX_OPEN } from '../src/core/market';
 import { CARD_VALUE } from '../src/core/economy';
-import { auctionEndsAt, auctionMax, auctionNextMin, auctionProblem } from '../src/core/auctions';
+import { auctionEndAfterBid, auctionEndsAt, auctionMax, auctionNextMin, auctionProblem } from '../src/core/auctions';
 import { fm } from '../src/core/msgs';
 import { notify } from './push';
 import { alertWishers } from './market';
@@ -23,6 +23,8 @@ import { alertWishers } from './market';
  *  - Clôture : `closeTick`, toutes les heures (convex/crons.ts) — les enchères échues (21 h Paris le jour d'échéance)
  *    sont closes : carte → gagnant, pièces → vendeur (pas de frais, comme le marché) ; sans offre : carte rendue.
  *    Idempotente (statut relu), par lots de CLOSE_BATCH.
+ *  - (28/11, décision de Tom) Prolongation : une offre dans les 5 dernières minutes repousse la fin à « offre + 5 min »
+ *    (autant de fois que nécessaire) ; la clôture est alors programmée à la nouvelle fin (`closeAt`, idempotente).
  *  - Coût : le tableau (abonné, seulement quand la pastille « Enchères » est à l'écran) ne lit QUE la table `auctions`
  *    (noms recopiés à l'écriture), au plus BOARD_MAX lignes + mes résultats récents.
  */
@@ -58,6 +60,7 @@ const view = (a: Doc<'auctions'>, meId: Id<'users'> | null) => ({
   status: a.status,
   createdAt: a.createdAt,
   endsAt: a.endsAt,
+  extended: a.extended ?? false,
   resolvedAt: a.resolvedAt,
 });
 
@@ -149,8 +152,12 @@ export const bid = mutation({
       await addCoins(ctx, a.bidderId, a.bid, 'auction-refund', fm('c.auctionRefund', card));
       await notify(ctx, a.bidderId, { kind: 'trade', title: fm('n.auctionOutbid', card), body: fm('n.auctionOutbidB', { name: me.displayName, coins: amount }), url: URL, tag: `auction-${a._id}` });
     }
-    await ctx.db.patch(id, { bid: amount, bidderId: me._id, bidderName: me.displayName, bids: (a.bids ?? 0) + 1 });
-    return { bid: amount };
+    // (28/11) anti-dernière-minute : une offre dans les 5 dernières minutes repousse la fin à « maintenant + 5 min » ; la
+    // tâche horaire ne repasse qu'à l'heure suivante → clôture programmée à la nouvelle fin (une par prolongation)
+    const endsAt = auctionEndAfterBid(a.endsAt, now);
+    await ctx.db.patch(id, { bid: amount, bidderId: me._id, bidderName: me.displayName, bids: (a.bids ?? 0) + 1, ...(endsAt !== a.endsAt ? { endsAt, extended: true } : {}) });
+    if (endsAt !== a.endsAt) await ctx.scheduler.runAt(endsAt, internal.auctions.closeAt, { id });
+    return { bid: amount, endsAt };
   },
 });
 
@@ -176,6 +183,18 @@ async function closeOne(ctx: MutationCtx, a: Doc<'auctions'>, now: number): Prom
   }
   return true;
 }
+
+/**
+ * (28/11) Clôture programmée d'une enchère prolongée, à sa nouvelle fin. Sans effet si elle a été reprolongée entre-temps
+ * (la programmation suivante la clôra) ou déjà close (par la tâche horaire, filet).
+ */
+export const closeAt = internalMutation({
+  args: { id: v.id('auctions') },
+  handler: async (ctx, { id }) => {
+    const a = await ctx.db.get(id);
+    return { closed: !!a && (await closeOne(ctx, a, Date.now())) };
+  },
+});
 
 /**
  * Tâche programmée (toutes les heures, convex/crons.ts) : clôt les enchères échues. Hors de 21 h (Paris), l'index ne

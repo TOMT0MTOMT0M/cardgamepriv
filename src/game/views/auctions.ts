@@ -1,4 +1,4 @@
-import { fmtDate, t as tr } from '../../core/i18n';
+import { fmtDate, lang, t as tr } from '../../core/i18n';
 import '../../core/i18n/fr/game.views.auctions'; // (textes de ce module, version anglaise)
 import './auctions.css';
 import type { AuctionItem, GameBackend, MarketItem } from '../backend';
@@ -24,10 +24,17 @@ import { setMarketPlugin } from './market';
 
 const nameOf = (id: string) => catalogEntry(id)?.name ?? id;
 
-/** fin, en court (coin de la tuile) : « ce soir 21 h » · « demain 21 h » · « sam. 29 21 h » · « 42 min » · « Terminée » */
-export function endsShort(endsAt: number, now = Date.now()): string {
+/**
+ * fin, en court (coin de la tuile) : « ce soir 21 h » · « demain 21 h » · « sam. 29 21 h » · « 42 min » · « Terminée » ·
+ * (28/11) « prolongée · 21 h 07 » quand une offre de dernière minute a repoussé la fin
+ */
+export function endsShort(endsAt: number, now = Date.now(), extended = false): string {
   const left = endsAt - now;
   if (left <= 0) return tr('au.cDone');
+  if (extended) {
+    const hm = fmtDate(endsAt, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'Europe/Paris' });
+    return tr('au.cExt', { t: lang() === 'fr' ? hm.replace(':', ' h ') : hm });
+  }
   if (left < 3600_000) return tr('au.cIn', { t: `${Math.max(1, Math.ceil(left / 60_000))} min` });
   const dd = parisDay(endsAt) - parisDay(now);
   if (dd <= 0) return tr('au.cTonight');
@@ -67,7 +74,7 @@ export function installAuctions(backend: GameBackend, o: { chime(): void }): voi
     const info = h(
       'div',
       'auc-state',
-      `${a.lead ? `<span class="auc-st lead">${tr('au.lead')}</span>` : ''}<span>${a.bid === undefined ? tr('au.noBid') : tr('au.bids', { n: a.bids })}${a.bidderName && !a.lead && a.bid !== undefined ? ` · ${tr('au.top', { name: esc(a.bidderName) })}` : ''}</span><span class="auc-end">${esc(endsShort(a.endsAt))}</span>`,
+      `${a.lead ? `<span class="auc-st lead">${tr('au.lead')}</span>` : ''}<span>${a.bid === undefined ? tr('au.noBid') : tr('au.bids', { n: a.bids })}${a.bidderName && !a.lead && a.bid !== undefined ? ` · ${tr('au.top', { name: esc(a.bidderName) })}` : ''}</span><span class="auc-end">${esc(endsShort(a.endsAt, Date.now(), a.extended))}</span>`,
     );
     box.append(info);
     if (isMine(a)) {
@@ -127,7 +134,7 @@ export function installAuctions(backend: GameBackend, o: { chime(): void }): voi
         toast(errMsg(e), 'err');
       }
     });
-    box.append(row, h('div', 'mk-note muted auc-hint', tr('au.minNext', { n: fmtCoins(min), max: fmtCoins(max) })), go, h('p', 'muted mk-note', tr('au.held')));
+    box.append(row, h('div', 'mk-note muted auc-hint', tr('au.minNext', { n: fmtCoins(min), max: fmtCoins(max) })), go, h('p', 'muted mk-note', `${tr('au.held')} ${tr('au.extRule')}`));
   }
 
   setMarketPlugin({
@@ -142,7 +149,8 @@ export function installAuctions(backend: GameBackend, o: { chime(): void }): voi
     corner(m) {
       const a = live.get(m.id);
       if (!a) return '';
-      return a.lead ? `${tr('au.lead')} · ${endsShort(a.endsAt)}` : endsShort(a.endsAt);
+      const end = endsShort(a.endsAt, Date.now(), a.extended);
+      return a.lead ? `${tr('au.lead')} · ${end}` : end;
     },
     dealFoot(m, box, close) {
       // (la fiche est posée dans la page juste après cet appel : le premier dessin se fait hors page)
@@ -187,7 +195,7 @@ export function auctionSellForm(backend: GameBackend, chosen: { cardId: string; 
     <div class="seg mk-dur auc-dur" role="radiogroup" aria-label="${tr('au.durA')}">${AUCTION_DAYS.map((d) => `<button role="radio" data-d="${d}" class="${d === days ? 'on' : ''}" aria-checked="${d === days}">${d * 24} h</button>`).join('')}</div>
     <p class="muted mk-note auc-when"></p>
     <div class="mk-pbtns"><button class="btn-primary auc-sgo">${tr('au.go')}</button></div>
-    <p class="muted mk-note">${tr('au.leaves')}</p>`;
+    <p class="muted mk-note">${tr('au.leaves')} ${tr('au.extRule')}</p>`;
   const pin = f.querySelector<HTMLInputElement>('.auc-pin')!;
   const go = f.querySelector<HTMLButtonElement>('.auc-sgo')!;
   const val = () => Math.round(Number(pin.value) || 0);

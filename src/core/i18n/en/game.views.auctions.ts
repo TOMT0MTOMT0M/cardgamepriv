@@ -26,6 +26,8 @@ export const en: PartOf<typeof fr> = {
   'au.cDay': '{day} 9 pm',
   'au.cIn': '{t}',
   'au.cDone': 'Ended',
+  'au.cExt': 'extended · {t}',
+  'au.extRule': 'A bid in the last 5 minutes extends the auction by 5 min.',
   'au.startA': 'Starting price',
   'au.startHint': 'At least {min} (Forge value) · max {max}',
   'au.dur': 'Duration',
