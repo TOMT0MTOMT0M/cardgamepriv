@@ -462,7 +462,8 @@
 
 /* ═════════ (20/11) ROULETTE : COULEURS — rouge / noir / vert sur la roue et le tapis, mise couleur (src/core/games.ts)
    La couleur est ici une INFORMATION (ce sur quoi on mise) : trois teintes franches, partout les mêmes. */
-.games, .rr { --rl-red: #d8343f; --rl-black: #0d0d0d; --rl-green: #18a35f; }
+/* (27/11) + .rr-veil : le rejeu du dernier tirage (rouletteReplay.ts) s'ouvre dans body, hors de .games */
+.games, .rr-veil { --rl-red: #d8343f; --rl-black: #0d0d0d; --rl-green: #18a35f; }
 .c-red { --rc: var(--rl-red); }
 .c-black { --rc: var(--rl-black); }
 .c-green { --rc: var(--rl-green); }
