@@ -16,5 +16,13 @@
 ## À vérifier par Tom
 - Relire la liste QOL et les 2 décisions V3 (contrats, enchères) ; fixer avec Hugo le prix minimum de Forge → vente.
 
+## Fait (27/11, V3 sur `v2`, `27e0ad0` — pas chez les joueurs)
+- Collection 4 (rangée « Presque finis »), 6 (fil thème › famille › album ; le 1er morceau ramène au thème, plus à la famille), 7 (tiroir « Filtres (n) » ≤ 600 px, bulle du chat masquée pendant).
+- Marché C (« ✓ je l'ai » = la carte, toutes raretés ; « ♥ envie » = carte, album ou famille) + filtres « Mes manquantes » / « Mes envies » ; D (vendeur → profil). Classement K (« Tu es Xe » → ma ligne ; filtre « Amis », masqué sans amis donc absent en démo).
+- Récap A (« Forger ces doublons (n) » → Forge présélectionnée, rien brûlé ; n = doublons du tirage, peut dépasser ce que la Forge accepte). Forge : puce « Toutes les 4★ et moins ». Roulette J (« Même mise », mises en pièces seulement). E (nom → profil : chat, fiche carte). F (« Message » : profil, ami ; `#/chat/<conv>` garde maintenant l'adresse complète de la page dessous).
+- Ménage : `views/defis.ts`, `views/presse.ts`, `defis.css` et leurs textes retirés (`74d08d3`).
+- Vérifié en démo (Chrome sans fenêtre, 390 px) : rangée, fil, tiroir, Forge, présélection, classement, Message. Pas vu : marques du marché (aucune annonce en démo), roulette (500 pièces en démo < 1 000), récap réel après ouverture.
+
 ## Reste
-- Fait en v2.1.30 (en ligne le 26/11) : collection 1-2-3, H, L — `v2.1.30.md`. Ensuite : collection 4, 6, 7, puis C, E, A. Chiffrer Forge → vente (requête groupée « qui veut ces cartes », coût Convex) avant de s'y mettre.
+- « Défier » (F) : pas de lancement de défi vers un joueur sans choisir boosters et mise (`createDuel`) — à concevoir.
+- G (amis : suggestions, `navigator.share`), B (récap réserve vide), M (push), C bis (alerte acheteur), Forge → vente (chiffrer d'abord la requête groupée « qui veut ces cartes »).
