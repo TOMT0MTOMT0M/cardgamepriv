@@ -8,7 +8,7 @@ import { rng } from '../core/ease';
 import { applyRegen, fmtCountdown } from '../core/packRegen';
 import { contractProblem, contractTarget, rollContract } from '../core/contracts';
 import { catalogEntry, BEBOU_PACK, themeById } from '../core/sets/themes';
-import { MARKET_MAX_OPEN, marketMax, marketProblem, marketSuggested } from '../core/market';
+import { MARKET_MAX_OPEN, WANTED_CARDS_MAX, marketAdvised, marketMax, marketProblem, marketSuggested } from '../core/market';
 import { DEAL_ALTS, DEALS_MAX, PICK_MAX, THEY_WANT_MAX, proposable, rankGives, soldStats, type CardPanel, type Deal, type TheyWant } from '../core/deals';
 import { wantsCard } from '../core/wishFams';
 import { POKEMON_151, pokemonCardId } from '../core/sets/pokemon151';
@@ -1380,9 +1380,9 @@ export function createLocalBackend(): GameBackend {
       remove(save.inv, it);
       M().push({ id: `mk${save.seq++}`, sellerId: 'me', sellerName: tr('chat.me'), cardId, rarity: r, mintNumber: mint, price, status: 'open', createdAt: Date.now() });
       sync();
-      // un robot achète parfois (pas tout de suite, et seulement à un prix raisonnable)
+      // un robot achète parfois (pas tout de suite, et seulement à un prix raisonnable : au plus le prix conseillé)
       const id = M()[M().length - 1].id;
-      if (price <= marketSuggested(r) * 1.5 && Math.random() < 0.6)
+      if (price <= marketAdvised(r) && Math.random() < 0.6)
         setTimeout(() => {
           const m = M().find((x) => x.id === id && x.status === 'open');
           if (!m) return;
@@ -1394,6 +1394,59 @@ export function createLocalBackend(): GameBackend {
           eco.hooks.onMarket(m.price, fm('c.marketSell', { card: cardName(m.cardId), cardId: m.cardId }));
           sync();
         }, 8000 + Math.random() * 12000);
+    },
+    // (v2.1.41) « Forge → vente » : mêmes règles que convex/market.ts (wanted / quickSell) ; les intéressés = les robots
+    // (amis de démo) qui ont la carte en envie et ne l'ont pas
+    async marketWanted(cards) {
+      await delay(80);
+      const open = M().filter((m) => m.sellerId === 'me' && m.status === 'open').length;
+      if (open >= MARKET_MAX_OPEN) return { open, cards: [] };
+      const out: Array<{ cardId: string; ids: string[] }> = [];
+      for (const c of cards.slice(0, WANTED_CARDS_MAX)) {
+        const ids = save.bots.filter((b) => !(b.inv[cardKey(c)]?.count ?? 0) && botWish(b.id).includes(c.cardId)).map((b) => b.id);
+        if (ids.length && c.rarity !== 'secret') out.push({ cardId: c.cardId, ids });
+      }
+      return { open, cards: out };
+    },
+    async marketQuickSell(items) {
+      await delay(120);
+      const n = items.reduce((a, it) => a + it.count, 0);
+      if (M().filter((m) => m.sellerId === 'me' && m.status === 'open').length + n > MARKET_MAX_OPEN) throw new Error(fe('market.2', { p0: MARKET_MAX_OPEN }));
+      const locked = lockedCards(state);
+      for (const it of items) {
+        const problem = marketProblem(it.rarity, marketAdvised(it.rarity));
+        if (problem) throw new Error(problem);
+        if ((save.inv[cardKey(it)]?.count ?? 0) - (locked.get(cardKey(it)) ?? 0) < it.count) throw new Error(`${cardName(it.cardId)} n’est pas libre (engagée dans un échange ou une annonce).`); // i18n-ok
+      }
+      const ids: string[] = [];
+      for (const it of items) {
+        const mint = save.inv[cardKey(it)]?.bestMintNumber ?? 999;
+        remove(save.inv, it);
+        for (let i = 0; i < it.count; i++) {
+          const id = `mk${save.seq++}`;
+          ids.push(id);
+          M().push({ id, sellerId: 'me', sellerName: tr('chat.me'), cardId: it.cardId, rarity: it.rarity, mintNumber: mint, price: marketAdvised(it.rarity), status: 'open', createdAt: Date.now() });
+        }
+      }
+      sync();
+      // un robot qui la veut l'achète souvent, quelques secondes plus tard (une vente invendue reste en vente)
+      for (const id of ids) {
+        const m0 = M().find((x) => x.id === id)!;
+        const fans = save.bots.filter((b) => !(b.inv[cardKey(m0)]?.count ?? 0) && botWish(b.id).includes(m0.cardId));
+        if (!fans.length || Math.random() > 0.75) continue;
+        setTimeout(() => {
+          const m = M().find((x) => x.id === id && x.status === 'open');
+          if (!m) return;
+          const bot = fans[Math.floor(Math.random() * fans.length)];
+          m.status = 'sold';
+          m.buyerId = bot.id;
+          m.resolvedAt = Date.now();
+          add(bot.inv, m.cardId, m.rarity, 1, m.mintNumber);
+          eco.hooks.onMarket(m.price, fm('c.marketSell', { card: cardName(m.cardId), cardId: m.cardId }));
+          sync();
+        }, 6000 + Math.random() * 10000);
+      }
+      return { listed: n };
     },
     async marketCancel(id) {
       const m = M().find((x) => x.id === id && x.sellerId === 'me');

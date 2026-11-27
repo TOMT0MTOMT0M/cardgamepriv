@@ -196,6 +196,11 @@ export function lockedCards(s: GameState): Map<string, number> {
 }
 
 // ─────────────────────────────── MARCHÉ (retours Hugo 10/11 — convex/market.ts, src/core/market.ts)
+/** (v2.1.41) « Forge → vente » : mes ventes ouvertes, et pour chaque carte voulue les joueurs qui la veulent */
+export interface MarketWanted {
+  open: number;
+  cards: Array<{ cardId: string; ids: string[] }>;
+}
 export interface MarketItem {
   id: string;
   sellerId: string;
@@ -569,6 +574,10 @@ export interface GameBackend {
   watchMarket(cb: (b: MarketBoard) => void): () => void;
   /** met UNE carte en vente (elle quitte la collection jusqu'à la vente ou au retrait) */
   marketSell(cardId: string, rarity: RarityId, price: number): Promise<void>;
+  /** (v2.1.41) au moment de forger : qui veut ces cartes ? (lecture ponctuelle, pas d'abonnement) */
+  marketWanted(cards: Array<{ cardId: string; rarity: RarityId }>): Promise<MarketWanted>;
+  /** (v2.1.41) met ces exemplaires en vente au prix conseillé ; les joueurs qui les veulent sont prévenus (une fois chacun) */
+  marketQuickSell(items: Array<{ cardId: string; rarity: RarityId; count: number }>): Promise<{ listed: number }>;
   marketCancel(id: string): Promise<void>;
   /** `price` : le prix affiché (refusé s'il a changé entre-temps) */
   marketBuy(id: string, price: number): Promise<void>;

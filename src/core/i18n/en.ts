@@ -637,6 +637,15 @@ export const en: Dict = {
   'fg.sec': '{n} cards · {c} spare copies',
   'fg.confirm': 'Burn {cards} ({list})?',
   'fg.burned': { one: '{dups} burned: +{coins} coins!', other: '{dups} burned: +{coins} coins!' },
+  'fg.sellWho': { one: '{n} player would like', other: '{n} players would like' },
+  'fg.sellQ': { one: '{who} one of the cards you are forging: put it up for sale at {coins} coins?', other: '{who} {n} of the cards you are forging: put them up for sale for {coins} coins in total?' },
+  'fg.sellCap': { one: '{max} open sales at most ({open} already): {n} of {w} goes to the market, the most valuable.', other: '{max} open sales at most ({open} already): {n} of {w} go to the market, the most valuable first.' },
+  'fg.sellRest': { one: 'The rest ({nf} card) is forged: +{coins} coins.', other: 'The rest ({nf} cards) is forged: +{coins} coins.' },
+  'fg.sellStays': 'A card that does not sell stays on sale: you can take it back whenever you like.',
+  'fg.sellGo': 'Put up for sale',
+  'fg.sellAll': 'Forge everything anyway{x}',
+  'fg.sellBack': 'Cancel',
+  'fg.sold': { one: '{n} card on sale at the market ({coins} coins)', other: '{n} cards on sale at the market ({coins} coins in total)' },
   'chat.card': 'Card',
 
   // ───── src/game/views/packSheet.ts ─────

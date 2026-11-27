@@ -35,7 +35,7 @@ export const fr = {
   'mk.back': '{name} est revenue dans ta collection.',
   'mk.noDup': 'Pas de doublon libre. Décoche « doublons seulement » pour vendre une carte unique.',
   'mk.noFree': 'Aucune carte libre ne correspond.',
-  'mk.value': 'valeur de la carte : {v} · max {max}',
+  'mk.value': 'valeur de la carte : {v} · conseillé {a} · max {max}',
   'mk.listed': '{name} est en vente à {price} pièces.',
   'mk.list': 'Mettre en vente',
   'mk.sellK': 'Vendre · Échanger',

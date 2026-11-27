@@ -1,14 +1,17 @@
 import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
-import { mutation, query, type QueryCtx } from './_generated/server';
+import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { getUserIdByToken, requireUser } from './auth';
 import { catalogCard, rarityValidator } from './cardsCatalog';
 import { addCoins, giveCards, recordFlow, takeCards } from './econLib';
-import { MARKET_MAX_OPEN, marketProblem } from '../src/core/market';
+import { MARKET_MAX_OPEN, WANTED_CARDS_MAX, marketAdvised, marketProblem } from '../src/core/market';
 import { CARD_VALUE } from '../src/core/economy';
 import { presenceOf } from './presence';
 import { fm } from '../src/core/msgs';
+import { FAM_ROW, famKeysOfCard } from '../src/core/wishFams';
+import { wishersOf, wishesReady } from './wishes';
+import { notify } from './push';
 
 /**
  * MARCHÉ (retours Hugo 10/11) : des cartes à prix fixe, en pièces, entre joueurs. Règles : src/core/market.ts.
@@ -87,6 +90,95 @@ export const sell = mutation({
     if (mine.length >= MARKET_MAX_OPEN) throw new ConvexError(fe('market.2', { p0: MARKET_MAX_OPEN }));
     const [taken] = await takeCards(ctx, me._id, [{ cardId, rarity, count: 1 }]);
     await ctx.db.insert('market', { sellerId: me._id, cardId, rarity, mintNumber: taken.mintNumber, price, status: 'open', createdAt: Date.now() });
+  },
+});
+
+// ─────────────────────────────── (v2.1.41, idée de Hugo) « Forge → vente »
+/** contrôles « il ne l'a pas encore » au plus par appel (une lecture d'inventaire chacun) : la requête reste bornée */
+const WANT_CHECKS_MAX = 300;
+type WantCard = { cardId: string; rarity: Doc<'market'>['rarity'] };
+
+/**
+ * Pour chaque carte, les joueurs qui la VEULENT (envie de la carte, de son album ou de sa famille : index `wishes`) et
+ * ne l'ont pas encore, moi exclu, bannis exclus (carte publique `presence`, jamais le document joueur). Lectures : 1 à 3
+ * par carte dans l'index des envies, puis au plus WANT_CHECKS_MAX lectures d'inventaire (au-delà : non comptés).
+ */
+async function wantersOf(ctx: QueryCtx | MutationCtx, meId: Id<'users'>, cards: readonly WantCard[]): Promise<Map<string, Id<'users'>[]>> {
+  const out = new Map<string, Id<'users'>[]>();
+  const banned = new Map<string, boolean>();
+  let checks = WANT_CHECKS_MAX;
+  for (const c of cards.slice(0, WANTED_CARDS_MAX)) {
+    if (out.has(c.cardId) || !catalogCard(c.cardId) || c.rarity === 'secret') continue;
+    const cand = new Set<Id<'users'>>(await wishersOf(ctx, c.cardId));
+    for (const k of famKeysOfCard(c.cardId)) for (const id of await wishersOf(ctx, FAM_ROW + k)) cand.add(id);
+    const ids: Id<'users'>[] = [];
+    for (const id of cand) {
+      if (id === meId || checks <= 0) continue;
+      let b = banned.get(id);
+      if (b === undefined) banned.set(id, (b = !!(await presenceOf(ctx, id))?.bannedAt));
+      if (b) continue;
+      checks--;
+      const row = await ctx.db.query('inventory').withIndex('by_user_card_rarity', (q) => q.eq('userId', id).eq('cardId', c.cardId).eq('rarity', c.rarity)).unique();
+      if ((row?.count ?? 0) < 1) ids.push(id);
+    }
+    if (ids.length) out.set(c.cardId, ids);
+  }
+  return out;
+}
+
+const openCount = async (ctx: QueryCtx | MutationCtx, meId: Id<'users'>) =>
+  (await ctx.db.query('market').withIndex('by_seller_status', (q) => q.eq('sellerId', meId).eq('status', 'open')).take(MARKET_MAX_OPEN + 1)).length;
+
+/**
+ * Au moment de forger : qui veut les cartes choisies ? Lecture PONCTUELLE (client.query), jamais abonnée. `open` = mes
+ * ventes ouvertes ; déjà MARKET_MAX_OPEN → rien d'autre n'est lu (aucune place au marché). Avant la migration des envies : rien.
+ */
+export const wanted = query({
+  args: { sessionToken: v.optional(v.string()), cards: v.array(v.object({ cardId: v.string(), rarity: rarityValidator })) },
+  handler: async (ctx, { sessionToken, cards }) => {
+    const meId = await getUserIdByToken(ctx, sessionToken);
+    if (!meId) return { open: 0, cards: [] };
+    const open = await openCount(ctx, meId);
+    if (open >= MARKET_MAX_OPEN || !(await wishesReady(ctx))) return { open, cards: [] };
+    const w = await wantersOf(ctx, meId, cards);
+    return { open, cards: [...w].map(([cardId, ids]) => ({ cardId, ids: ids as string[] })) };
+  },
+});
+
+/**
+ * Met plusieurs exemplaires en vente d'un coup, au PRIX CONSEILLÉ (calculé ici, jamais envoyé par le jeu), puis prévient
+ * chaque joueur qui en veut une : UNE notification par joueur pour tout le lot (même `tag` par vendeur : un 2ᵉ lot
+ * remplace la précédente). Tout ou rien : 10 ventes ouvertes au plus, comme `sell`.
+ */
+export const quickSell = mutation({
+  args: { sessionToken: v.string(), items: v.array(v.object({ cardId: v.string(), rarity: rarityValidator, count: v.number() })) },
+  handler: async (ctx, { sessionToken, items }) => {
+    const me = await requireUser(ctx, sessionToken);
+    const n = items.reduce((a, it) => a + it.count, 0);
+    if (!items.length || n < 1) return { listed: 0 };
+    for (const it of items) {
+      if (!catalogCard(it.cardId)) throw new ConvexError(fe('market.1'));
+      const problem = marketProblem(it.rarity, marketAdvised(it.rarity));
+      if (problem) throw new ConvexError(problem);
+    }
+    if ((await openCount(ctx, me._id)) + n > MARKET_MAX_OPEN) throw new ConvexError(fe('market.2', { p0: MARKET_MAX_OPEN }));
+    const taken = await takeCards(ctx, me._id, items);
+    const now = Date.now();
+    for (const t of taken)
+      for (let i = 0; i < t.count; i++) await ctx.db.insert('market', { sellerId: me._id, cardId: t.cardId, rarity: t.rarity, mintNumber: t.mintNumber, price: marketAdvised(t.rarity), status: 'open', createdAt: now });
+    // les intéressés, regroupés : joueur → ses cartes (dans l'ordre du lot)
+    const per = new Map<Id<'users'>, WantCard[]>();
+    for (const [cardId, ids] of await wantersOf(ctx, me._id, items))
+      for (const id of ids) {
+        const it = items.find((x) => x.cardId === cardId)!;
+        per.set(id, [...(per.get(id) ?? []), it]);
+      }
+    for (const [id, l] of per) {
+      const c = l[0];
+      const body = l.length === 1 ? fm('n.wishSaleOne', { card: nameOf(c.cardId), cardId: c.cardId, coins: marketAdvised(c.rarity) }) : fm('n.wishSaleMany', { card: nameOf(c.cardId), cardId: c.cardId, coins: marketAdvised(c.rarity), n: l.length - 1 });
+      await notify(ctx, id, { kind: 'trade', title: fm('n.wishSale', { name: me.displayName, n: l.length }), body, url: '#/echanges/chercher', tag: `wish-sale-${me._id}` });
+    }
+    return { listed: n, notified: per.size };
   },
 });
 

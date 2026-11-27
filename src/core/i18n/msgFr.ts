@@ -135,6 +135,10 @@ export const MSG_FR = {
   'n.tradeAccepted': '{name} a accepté ton échange !',
   'n.dealChanged': 'Il a choisi {card} au lieu de {card2}.',
   'n.cardsIn': 'Les cartes sont dans ta collection.',
+  // (v2.1.41) « Forge → vente » : un joueur met en vente des cartes que tu veux (une notification pour tout le lot)
+  'n.wishSale': { one: '{name} vend une carte que tu veux', other: '{name} vend {n} cartes que tu veux' },
+  'n.wishSaleOne': '{card} ({coins} pièces). Au marché : le premier qui achète l’a.',
+  'n.wishSaleMany': { one: '{card} ({coins} pièces) et 1 autre. Au marché : le premier qui achète l’a.', other: '{card} ({coins} pièces) et {n} autres. Au marché : le premier qui achète l’a.' },
   'n.friendAccepted': '{name} a accepté ta demande d’ami',
   'n.friendAcceptedBody': 'Vous pouvez échanger des cartes.',
   'n.friendAsk': '{name} te demande en ami',

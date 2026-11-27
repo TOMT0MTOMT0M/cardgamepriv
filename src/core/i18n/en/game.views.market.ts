@@ -36,7 +36,7 @@ export const en: PartOf<typeof fr> = {
   'mk.back': '{name} is back in your collection.',
   'mk.noDup': 'No free duplicates. Untick “duplicates only” to sell a single card.',
   'mk.noFree': 'No free card matches.',
-  'mk.value': 'card value: {v} · max {max}',
+  'mk.value': 'card value: {v} · suggested {a} · max {max}',
   'mk.listed': '{name} is for sale at {price} coins.',
   'mk.list': 'Put up for sale',
   'mk.sellK': 'Sell · Trade',

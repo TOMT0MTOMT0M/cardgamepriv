@@ -213,6 +213,16 @@ body[data-route='jeux'] .views { pointer-events: auto; }
 .gm-fgrid.flash { animation: forge-flash 0.5s ease-out; }
 @keyframes forge-flash { 30% { filter: brightness(1.8) sepia(0.6) saturate(3); } }
 .gm-ffoot { position: sticky; bottom: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0 2px; background: linear-gradient(transparent, var(--panel-solid) 30%); }
+/* (v2.1.41) « Forge → vente » : la proposition prend la place du pied de la Forge */
+.gm-ffoot.fg-sell { flex-direction: column; align-items: stretch; gap: 8px; padding-top: 12px; border-top: 1px solid var(--gm-line); background: var(--panel-solid); }
+.fg-sell-q { font-size: 14px; line-height: 1.4; }
+.fg-sell-q b { font-weight: 600; }
+.fg-sell-row { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.fg-sell-row::-webkit-scrollbar { display: none; }
+.fg-sell-row .tile { flex: none; width: 64px; cursor: default; }
+.fg-sell-note { font-size: 12px; line-height: 1.45; }
+.fg-sell-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fg-sell-acts .btn-primary, .fg-sell-acts .btn-ghost { flex: 1 1 auto; min-height: 40px; }
 
 /* succès */
 .gm-ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }

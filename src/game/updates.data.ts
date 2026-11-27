@@ -71,6 +71,17 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        // (v2.1.41) « Forge → vente » (idée de Hugo)
+        date: '28 nov.', title: '🔥 Forge → vente : tes doublons voulus partent au marché en un toucher', tag: 'nouveau',
+        points: [
+          '🔥 Quand tu forges, si d’autres joueurs veulent certaines de tes cartes (envie de la carte, de son album ou de sa famille), la Forge te propose de les mettre en vente. Un toucher : elles partent au marché, le reste est forgé.',
+          '🪙 Prix conseillé = 1,5× la valeur de Forge : 1★ 8 · 2★ 23 · 3★ 60 · 4★ 150 · 5★ 450 · 6★ 1 500 pièces. L’écran « Vendre » du marché part aussi de ce prix.',
+          '🔔 Ceux qui veulent la carte reçoivent une notification : « … vend une carte que tu veux ». Une seule pour tout le lot.',
+          '🛒 10 ventes ouvertes au plus : les cartes les plus chères passent d’abord. Une carte pas vendue reste en vente, tu peux la retirer quand tu veux.',
+          'Pourquoi : forger se faisait en un toucher, vendre demandait plusieurs gestes. Maintenant, vendre à quelqu’un qui la veut est aussi simple.',
+        ],
+      },
+      {
         // (v2.1.40) retrait des contrats, même date que la nouvelle économie
         date: '28 nov.', title: '📜 Fin des contrats le 1er décembre', tag: 'nouveau',
         points: [
