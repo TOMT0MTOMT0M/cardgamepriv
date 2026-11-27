@@ -1160,7 +1160,8 @@ export function createOpeningScene(): OpeningScene {
       // (Étoile : halo plus serré — un liseré de poussière dorée, pas une braise)
       const ember = exp(burnFront.max(0).mul(-160)).mul(4).add(exp(burnFront.max(0).mul(-30)).mul(select(STARON.greaterThan(0.5), float(0.08), float(0.3)))).mul(step(-0.2, U.burn));
       // fuite de lumière : la ligne de déchirure et les soudures luisent de la couleur de la meilleure carte
-      const seam = masks.b.mul(1.4).add(S.crans.mul(0.35));
+      // (27/11, retour de Hugo) l'Étoile de Noël joue CE sachet : pas de ligne de déchirure allumée (repère de la Déchirure)
+      const seam = masks.b.mul(1.4).mul(STARON.oneMinus()).add(S.crans.mul(0.35));
       m.emissiveNode = (U.ember as unknown as N).mul(ember.add(seam.add(leakPrint(col, pp)).mul(U.leak)));
       const lift = creaseLift(sw, art, side);
       m.positionNode = (lift ? positionLocal.add(lift) : positionLocal).add(normalLocal.mul(smoothstep(0.05, 0.0, burnFront).mul(0.03)));
@@ -1447,7 +1448,9 @@ export function createOpeningScene(): OpeningScene {
         m.roughnessNode = mix(m.roughnessNode as N, float(0.75), frostAmt);
       }
       // fuite de lumière (003) à l'extérieur, comme le sachet scellé ; l'envers n'émet rien
-      const leak = (U.ember as unknown as N).mul(masks.b.mul(1.4).add(S.crans.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak));
+      // (27/11, retour de Hugo) SANS la ligne de déchirure (masks.b) : son filet lumineux est le repère du geste de la
+      // Déchirure ; recopié ici, il s'allumait sur le Retroussé, la Fenêtre et le film gelé, qui ne s'ouvrent pas là
+      const leak = (U.ember as unknown as N).mul(S.crans.mul(0.35).add(leakPrint(col, positionLocal.xy)).mul(U.leak));
       if (!win || side === 1) m.emissiveNode = select(frontFacing, leak, vec3(0, 0, 0));
       else {
         // (27/11) Fenêtre : la lumière de l'intérieur passe par la découpe (les deux lèvres, l'envers un peu moins)
@@ -2423,7 +2426,10 @@ export function createOpeningScene(): OpeningScene {
     applyTearArt(k);
     // une des variantes enregistrées, au hasard (chaque booster se déchire un peu différemment)
     const bakes = loadedBakes();
-    useBake = !rolling && !warmingTear && !!bakePlayer && bakes.length > 0;
+    // (27/11, retour de Hugo) la cuisson de la Déchirure ne joue QUE la Déchirure : ses variantes restent chargées tant
+    // que la famille quittée n'est pas libérée (retour en vitrine), et l'Étoile garde la famille `tear` — avant, ses
+    // mailles étaient animées (et rendables) sous l'Étoile, la Fenêtre ou la glace
+    useBake = style === 'tear' && !warmingTear && !!bakePlayer && bakes.length > 0;
     if (useBake) bakePlayer!.use(bakes[Math.floor(Math.random() * bakes.length)]);
     bakePlay = 0;
     bakeExit.t = -1;
