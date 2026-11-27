@@ -12,7 +12,7 @@ import { siteUrl } from './siteRoot';
  *    uv, `lvl` = niveau de fissure ; film : position, normale, uv, groupes face avant / dos) réécrites au processeur à
  *    chaque image (≈ 5 000 sommets : rotation + translation par éclat, interpolées entre deux images enregistrées).
  */
-export const BAKE_REV_GLACE = 1;
+export const BAKE_REV_GLACE = 2;
 const N_VARIANTS = 3;
 
 let loading: Promise<ShatterBake | null>[] | null = null;

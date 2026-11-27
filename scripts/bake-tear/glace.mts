@@ -36,7 +36,14 @@ const norm = (a: V3): V3 => mul(a, 1 / (Math.hypot(...a) || 1));
 // ───────────────────────────── dimensions (unités du sachet : 1 = 100 mm)
 const W = PACK.w, H = PACK.h;
 /** demi-tailles du bloc : 5 mm de glace autour du sachet, BZ d'épaisseur de chaque côté */
-const BX = W / 2 + 0.05, BY = H / 2 + 0.05, BZ = ENV('BZ', 0.07);
+const BX = W / 2 + 0.08, BY = H / 2 + 0.08, BZ = ENV('BZ', 0.085);
+/**
+ * (retours de Tom 27/11 : « moins rectangulaire, plus bloc de glace naturel, plus arrondi ») LE BLOC est l'enveloppe
+ * d'une boîte arrondie — boîte (BX − R, BY − R, 0) épaissie d'un ellipsoïde (R, R, BZ) : coins et bords en galet — taillée
+ * en HULL facettes (directions réparties sur la sphère), chacune décalée au hasard de ± JIT_HULL : une glace naturelle,
+ * irrégulière, aux faces planes. Toutes les cellules partent de ce même polyèdre convexe.
+ */
+const R_XY = ENV('RXY', 0.16), HULL = ENV('HULL', 64), JIT_HULL = ENV('JITHULL', 0.018);
 const FPS = 30, DUR = 1.4;
 const N_FRAMES = Math.round(DUR * FPS) + 1;
 const FRAME_DT = 1 / 240;
@@ -134,9 +141,26 @@ function bake(V: GVariant, index: number) {
   }
   const lvlOf = (d: number) => (d < R1 ? 1 : d < R2 ? 2 : 3);
   const shards: Shard[] = [];
+  // ── le bloc naturel : la boîte, puis HULL facettes (spirale de Fibonacci sur la sphère), support de la boîte arrondie
+  let block = boxFaces();
+  for (let k = 0; k < HULL; k++) {
+    const y = 1 - (2 * (k + 0.5)) / HULL, rr = Math.sqrt(1 - y * y), a = k * Math.PI * (3 - Math.sqrt(5));
+    // (axes : x et y de la sphère sur le plan du sachet, z vers le joueur)
+    const n: V3 = norm([Math.cos(a) * rr, y, Math.sin(a) * rr]);
+    const sup = Math.abs(n[0]) * (BX - R_XY) + Math.abs(n[1]) * (BY - R_XY) + Math.hypot(R_XY * n[0], R_XY * n[1], BZ * n[2]);
+    block = clip(block, n, sup + (rnd() * 2 - 1) * JIT_HULL, -1);
+  }
+  for (const f of block) f.tag = -1;
+  // graines tombées hors du bloc (coins arrondis) : écartées
+  const planes = block.map((f) => {
+    const c = mul(f.pts.reduce((s, p) => add(s, p), [0, 0, 0] as V3), 1 / f.pts.length);
+    const n = norm(cross(sub(f.pts[1], f.pts[0]), sub(f.pts[2], f.pts[0])));
+    return { n, d: dot(n, c) };
+  });
+  for (let i = seeds.length - 1; i >= 0; i--) if (planes.some((pl) => dot(pl.n, seeds[i]) > pl.d - 0.004)) seeds.splice(i, 1);
   // ── glace : une cellule par graine
   for (let i = 0; i < seeds.length; i++) {
-    let faces = boxFaces();
+    let faces = block.map((f) => ({ pts: f.pts.slice(), tag: f.tag }));
     for (let j = 0; j < seeds.length && faces.length; j++) {
       if (j === i) continue;
       const n = norm(sub(seeds[j], seeds[i]));
