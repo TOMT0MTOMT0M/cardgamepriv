@@ -31,7 +31,7 @@ export const fr = {
   'fy.pfSearch': 'Chercher une carte…',
   'fy.pfNone': 'Aucune carte à cette étoile.',
   'fy.pfMore': { one: 'et {n} autre : affine avec la recherche', other: 'et {n} autres : affine avec la recherche' },
-  'fy.online': 'en ligne',
+  'fy.online': 'actif récemment',
   'fy.offline': 'hors ligne',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

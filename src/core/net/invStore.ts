@@ -99,6 +99,98 @@ export async function saveInv(key: string, uid: string | undefined, rows: InvRow
   }
 }
 
+/**
+ * (V3, coût Convex, piste 3 de docs/chantiers/convex-pistes.md) COPIE DE LA COLLECTION D'UN AMI, gardée sur l'appareil
+ * (même base, clé `ami:<id>`) et reprise par différence (`inventory.userCollectionSince`). AVANT (v2.1.32) : gardée le
+ * temps de la session — rouvrir le profil d'un gros collectionneur le lendemain relisait jusqu'à 6,5 Mo en un appel
+ * (26 % de la Database I/O mesurée le 27/11). Bornée : FRIEND_KEEP amis au plus, FRIEND_ROWS lignes en tout (les moins
+ * récemment ouverts partent d'abord), même époque et même filet de 30 jours que la copie du joueur.
+ */
+export const FRIEND_KEEP = 10;
+export const FRIEND_ROWS = 60_000;
+const FRIEND_INDEX = 'amis';
+const friendKey = (id: string) => `ami:${id}`;
+export interface FriendSlot {
+  id: string;
+  /** dernière ouverture (ordre d'éviction) */
+  used: number;
+  /** lignes gardées */
+  n: number;
+}
+interface SavedFriend {
+  build: string;
+  at: number;
+  rows: InvRow[];
+}
+
+/**
+ * Pur : index des copies d'amis après avoir ouvert `id` (copie de `n` lignes, `n` < 0 : pas de nouvelle copie, on ne
+ * fait que la marquer ouverte). Rend le nouvel index (plus récent d'abord) et les amis à effacer.
+ */
+export function friendLru(index: FriendSlot[], id: string, n: number, now: number, keep = FRIEND_KEEP, maxRows = FRIEND_ROWS): { index: FriendSlot[]; evict: string[] } {
+  const old = index.find((s) => s.id === id);
+  const rest = index.filter((s) => s.id !== id).sort((a, b) => b.used - a.used);
+  const size = n >= 0 ? n : (old?.n ?? -1);
+  if (size < 0 || size > maxRows) return { index: rest, evict: old ? [id] : [] };
+  const out: FriendSlot[] = [{ id, used: now, n: size }];
+  const evict: string[] = [];
+  let total = size;
+  for (const s of rest) {
+    if (out.length < keep && total + s.n <= maxRows) {
+      out.push(s);
+      total += s.n;
+    } else evict.push(s.id);
+  }
+  return { index: out, evict };
+}
+
+function idbGet<T>(db: IDBDatabase, key: string): Promise<T | undefined> {
+  return new Promise((done, fail) => {
+    const rq = db.transaction(STORE, 'readonly').objectStore(STORE).get(key);
+    rq.onsuccess = () => done(rq.result as T | undefined);
+    rq.onerror = () => fail(rq.error);
+  });
+}
+
+/** Copie de la collection d'un ami (lignes + date de la dernière lecture complète), ou `null` : à relire en entier. */
+export function loadFriendInv(id: string): Promise<{ at: number; rows: InvRow[] } | null> {
+  const read = async () => {
+    const db = await open();
+    if (!db) return null;
+    try {
+      const s = await idbGet<SavedFriend>(db, friendKey(id));
+      if (!s || !Array.isArray(s.rows) || s.build !== EPOCH || !(Date.now() - s.at < MAX_AGE_MS && Date.now() >= s.at)) return null;
+      return { at: s.at, rows: s.rows };
+    } catch {
+      return null;
+    } finally {
+      db.close();
+    }
+  };
+  return Promise.race([read(), new Promise<null>((r) => setTimeout(() => r(null), LOAD_WAIT_MS))]);
+}
+
+/**
+ * Garde la copie d'un ami (`rows` absent : seulement marquée ouverte, pour l'ordre d'éviction) et efface celles qui
+ * sortent des bornes. Tout échec est silencieux (le prochain profil relira, comme avant).
+ */
+export async function saveFriendInv(id: string, at: number, rows?: InvRow[]): Promise<void> {
+  const db = await open();
+  if (!db) return;
+  try {
+    const index = (await idbGet<FriendSlot[]>(db, FRIEND_INDEX)) ?? [];
+    const plan = friendLru(Array.isArray(index) ? index : [], id, rows ? rows.length : -1, Date.now());
+    const tx = db.transaction(STORE, 'readwrite');
+    const st = tx.objectStore(STORE);
+    st.put(plan.index, FRIEND_INDEX);
+    for (const e of plan.evict) st.delete(friendKey(e));
+    if (rows && plan.index.some((s) => s.id === id)) st.put({ build: EPOCH, at, rows } satisfies SavedFriend, friendKey(id));
+    tx.oncomplete = tx.onerror = tx.onabort = () => db.close();
+  } catch {
+    db.close();
+  }
+}
+
 export async function clearInv(): Promise<void> {
   const db = await open();
   if (!db) return;

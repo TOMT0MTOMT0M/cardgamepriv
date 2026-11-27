@@ -19,7 +19,9 @@ crons.interval('annonces : expiration', { minutes: 15 }, internal.listings.expir
 // (26/11, coût Convex) toutes les 10 min (avant : 5) : la ligne d'un joueur qui ouvre le classement est recalculée
 // tout de suite (refreshMyRank), celles des autres ont au plus 10 min de retard ; les lignes se calculent par
 // différence (convex/rankInc.ts)
-crons.interval('classement : lignes et numero un', { minutes: 10 }, internal.profiles.refreshRanks, {});
+// (V3, coût Convex, piste 8) toutes les 30 min (avant : 10) : mesuré −51 % de lecture par heure de soirée
+// (convex/coutClassement.test.ts) ; fenêtres IDLE / LOOK de profiles.ts suivies (CRON_EVERY_MS)
+crons.interval('classement : lignes et numero un', { minutes: 30 }, internal.profiles.refreshRanks, {});
 // (11/11, chantier ouvertures-saisons) saisons mensuelles : ouvre la saison, ajoute les nouveaux joueurs, et au changement
 // de mois (Paris) fige le classement, donne les récompenses et ouvre la suivante (idempotent — convex/seasons.ts)
 crons.interval('saisons : fin du mois', { hours: 1 }, internal.seasons.tick, {});

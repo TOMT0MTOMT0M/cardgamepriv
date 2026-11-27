@@ -11,6 +11,7 @@ import { cardsValue } from '../src/core/economy';
 import { dropInv, invRev } from './invRev';
 import { presenceOf, seenAtOf } from './presence';
 import { fm, feedMsg } from '../src/core/msgs';
+import { ONLINE_MS } from '../src/core/online';
 
 const tradeItemValidator = v.object({
   cardId: v.string(),
@@ -148,8 +149,8 @@ export const myTrades = query({
   },
 });
 
-/** (v1.0.9) même fenêtre « en ligne » que la liste des joueurs (users.ts) */
-const OWNER_ONLINE_MS = 6 * 60 * 1000;
+/** (v1.0.9) même fenêtre « en ligne » que la liste des joueurs (src/core/online.ts, V3 : 12 min) */
+const OWNER_ONLINE_MS = ONLINE_MS;
 
 /**
  * « CHERCHER UN PROPRIÉTAIRE » (v1.0.9, retours 09/11) : qui possède cette carte — hors moi et comptes bannis — avec les

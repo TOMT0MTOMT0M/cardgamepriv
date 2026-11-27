@@ -255,7 +255,9 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
   await patchLive(ctx, user, {
     totalPacksOpened: user.totalPacksOpened + 1,
     lastSeenAt: now,
-    statusText: pack.god ? 'Vient d’ouvrir un GOD PACK' : 'Contemple son tirage',
+    // (V3, coût Convex, piste 10) plus de « Contemple son tirage » : le statut reste « Ouvre un … », et une série de
+    // boosters n'écrit plus la présence à chaque booster (convex/presence.ts)
+    ...(pack.god ? { statusText: 'Vient d’ouvrir un GOD PACK' } : {}),
   });
   if (tail) await syncPresence(ctx, user._id, 0, user);
   if (pack.god)

@@ -1,5 +1,6 @@
 import type { MutationCtx, QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
+import { SEEN_EVERY_MS } from '../src/core/online';
 
 /**
  * PRÉSENCE (audit perf 12/11, décision 8 / E1-05) — la « carte publique » d'un joueur, hors de son document.
@@ -61,6 +62,10 @@ export async function syncPresence(ctx: MutationCtx, userId: Id<'users'>, seenAt
   }
   const want = cardOf(u, Math.max(u.lastSeenAt, row?.lastSeenAt ?? 0, seenAt));
   if (row) {
+    // (V3, piste 10) seuls « vu à » (de moins de 10 min) et le compteur de boosters ont bougé — cas de chaque booster
+    // d'une série sur le même thème : pas d'écriture, la liste du club ne repart pas chez tout le monde. Ils suivent
+    // à la prochaine écriture (battement de cœur au plus 10 min plus tard, ou statut qui change).
+    if (want.lastSeenAt - row.lastSeenAt < SEEN_EVERY_MS && same({ ...want, lastSeenAt: row.lastSeenAt, totalPacksOpened: row.totalPacksOpened }, row)) return;
     if (!same(want, row)) await ctx.db.replace(row._id, want);
   } else if (await ctx.db.query('presence').first()) await ctx.db.insert('presence', want);
 }

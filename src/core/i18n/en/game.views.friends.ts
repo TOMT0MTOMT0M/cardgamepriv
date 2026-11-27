@@ -4,8 +4,8 @@ import type { fr } from '../fr/game.views.friends';
 
 export const en: PartOf<typeof fr> = {
   'am.ref.rules': 'Invite your mates with your link: they get <b>{n} boosters</b> when they join, and you get <b>{n} boosters</b> once they’ve opened their first {k}.',
-  'am.online': 'online',
-  'am.onlineSuffix': ', online',
+  'am.online': 'recently active',
+  'am.onlineSuffix': ', recently active',
   'am.seen': 'seen {when}',
   'am.addShort': '+ Friend',
   'am.add': '+ Add friend',
@@ -74,5 +74,5 @@ export const en: PartOf<typeof fr> = {
   'am.shareText': 'Come open boosters with me on Bébou!',
   'am.selected': 'Selected: copy it (Ctrl+C).',
   'am.ask': 'Send request',
-  'am.countOnline': '{friends} · {n} online',
+  'am.countOnline': '{friends} · {n} active',
 };

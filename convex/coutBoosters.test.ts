@@ -189,5 +189,7 @@ test('boosters : mêmes valeurs en base, quel que soit le chemin de lecture / é
   console.log(`[mesure coût] empreinte : pièces ${ua.coins} · boosters ouverts ${ua.totalPacksOpened} · réserve ${ua.packBalance} · pity ${ua.pityCount} · parrain payé ${ua.referralPaid} · ${dump.inventory.length} lignes · ${dump.pendingJobs.length} rappel(s)`);
   expect(ua.totalPacksOpened).toBe(21);
   expect(ua.referralPaid).toBe(true);
-  expect(createHash('sha256').update(json).digest('hex').slice(0, 16)).toMatchInlineSnapshot(`"e6a4c9ca0f244caf"`);
+  // (V3, piste 10) empreinte changée : seuls `users.statusText` (plus de « Contemple son tirage ») et la carte de
+  // présence (écrite au plus toutes les 10 min : compteur et « vu à » en retard) diffèrent — comparé ligne à ligne
+  expect(createHash('sha256').update(json).digest('hex').slice(0, 16)).toMatchInlineSnapshot(`"d555fd72f6b6d7b4"`);
 });

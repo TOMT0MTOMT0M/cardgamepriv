@@ -32,6 +32,6 @@ export const en: PartOf<typeof fr> = {
   'fy.pfSearch': 'Search a card…',
   'fy.pfNone': 'No card with these stars.',
   'fy.pfMore': { one: 'and {n} more: narrow it with the search', other: 'and {n} more: narrow it with the search' },
-  'fy.online': 'online',
+  'fy.online': 'recently active',
   'fy.offline': 'offline',
 };

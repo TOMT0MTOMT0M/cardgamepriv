@@ -14,6 +14,7 @@ import { PUBLIC_CARD_COUNT, SUBTHEMES, THEMES } from '../src/core/sets/themes';
 import { ACHIEVEMENTS, achievementDone, achievementStats, visibleAchievements } from '../src/core/economy';
 import { econOf } from './econLib';
 import { seenAtOf, syncPresence } from './presence';
+import { SEEN_EVERY_MS } from '../src/core/online';
 import { INC_CAP, INC_MARGIN_MS, collStats, incDelta, incFromRows, incOf, incUsable, saveInc, type RankInc } from './rankInc';
 
 /**
@@ -270,15 +271,20 @@ async function putMeta(ctx: MutationCtx, m: RankMeta) {
 }
 const metaValidator = v.object({ userId: v.id('users'), rowId: v.id('rankRows'), updatedAt: v.number(), sig: v.optional(v.string()), hasStats: v.boolean(), uniques: v.number() });
 
-/** joueur vu depuis le calcul de sa ligne (battement de cœur au plus toutes les 4 min : marge de 5 min) */
-const SEEN_MARGIN_MS = 5 * 60_000;
 /**
- * … et vu il y a moins de 25 min : un geste fait avant de partir (au plus 4 min après sa dernière présence) est vu par
- * un des passages du cron (toutes les 10 min) dans ce délai ; au-delà, inutile de relire son document à chaque passage.
+ * joueur vu depuis le calcul de sa ligne (« vu à » de la présence écrit au plus toutes les 10 min, V3 :
+ * src/core/online.ts — marge de 11 min ; avant : 4 et 5 min)
  */
-const LOOK_MS = 25 * 60_000;
-/** personne n'est passé depuis : le cron ne relit rien de plus (ni lignes ni joueurs) */
-const IDLE_MS = 20 * 60_000;
+const SEEN_MARGIN_MS = SEEN_EVERY_MS + 60_000;
+/**
+ * … et vu il y a moins de 45 min : un geste fait avant de partir (au plus 10 min après sa dernière présence) est vu par
+ * un des passages du cron (toutes les 30 min, V3 ; avant : 10 min et 25 min) dans ce délai ; au-delà, inutile de
+ * relire son document à chaque passage.
+ */
+const CRON_EVERY_MS = 30 * 60_000;
+const LOOK_MS = CRON_EVERY_MS + SEEN_EVERY_MS + 5 * 60_000;
+/** personne n'est passé depuis : le cron ne relit rien de plus (ni lignes ni joueurs) — (V3) 20 → 45 min, même raison */
+const IDLE_MS = LOOK_MS;
 
 /**
  * Joueurs, dernière activité, et date de leur ligne du classement (pour savoir qui recalculer).

@@ -7,8 +7,9 @@ import type { Doc, Id } from '../../../convex/_generated/dataModel';
 import type { RarityId } from '../rarity';
 import type { MissionsState } from '../missions';
 import type { StreakState } from '../streak';
-import { InvMirror, shouldRebase } from './invDiff';
-import { clearInv, invKeyOf, loadInv, saveInv, type InvWhy, type KeptInv } from './invStore';
+import { InvMirror, shouldRebase, type InvRow } from './invDiff';
+import { ONLINE_MS } from '../online';
+import { clearInv, invKeyOf, loadFriendInv, loadInv, saveFriendInv, saveInv, type InvWhy, type KeptInv } from './invStore';
 
 /** réponse de `economy.state` */
 export type EcoRaw = NonNullable<(typeof api.economy.state)['_returnType']>;
@@ -170,8 +171,8 @@ type Listener = (state: NetState) => void;
 /** Profil sans les champs qui changent à chaque battement de cœur sans rien changer à l'écran. */
 const userSig = (u: MeProfile | null) => (u ? JSON.stringify({ ...u, nextDailyClaimAt: 0 }) : '');
 /** Amis sans `lastSeenAt` (change à chaque battement) ni l'ordre qui en découle. */
-/** « en ligne » = vu depuis moins de 6 min (même fenêtre que convex/users.ts, ONLINE_WINDOW_MS) */
-const ONLINE_WINDOW_MS = 6 * 60 * 1000;
+/** « en ligne » = vu depuis moins de 12 min (V3, même fenêtre que le serveur : src/core/online.ts) */
+const ONLINE_WINDOW_MS = ONLINE_MS;
 const friendsSig = (fs: FriendPresence[]) =>
   fs
     .map((f) => JSON.stringify([f._id, f.displayName, f.username, f.avatarUrl ?? '', f.totalPacksOpened, f.online, f.statusText ?? '', f.cos ?? null]))
@@ -848,6 +849,7 @@ class GameNetClient {
     // 4 min (convex/users.ts, SEEN_EVERY_MS) — 6 appels sur 7 ne servaient à rien. « En ligne » = vu depuis moins de
     // 6 min : il faut un battement au plus toutes les 6 − 4 = 2 min pour qu'un joueur actif ne paraisse jamais
     // hors ligne (une ouverture de booster décale l'écriture suivante) → 110 s, 3 fois moins d'appels.
+    // (V3, piste 10) écriture au plus toutes les 10 min, fenêtre de 12 min (src/core/online.ts) : même écart de 2 min.
     beat();
     this.beatNow = beat;
     this.heartbeatTimer = window.setInterval(beat, 110_000);
@@ -1066,30 +1068,71 @@ class GameNetClient {
   /** Collection d'un ami (pour composer un échange). */
   public async userCollection(userId: Id<'users'>): Promise<Array<{ cardId: string; rarity: RarityId; count: number; bestMintNumber: number }>> {
     if (!this.client) return [];
-    // (v2.1.32, coût Convex, piste 3) copie par ami gardée le temps de la session, suivie par différence
+    type Out = Array<{ cardId: string; rarity: RarityId; count: number; bestMintNumber: number }>;
+    const client = this.client;
+    // (v2.1.32, coût Convex, piste 3) copie par ami suivie par différence ; (V3) gardée aussi sur l'appareil
+    // (invStore.ts, 10 amis au plus) : rouvrir un profil un autre jour ne relit plus toute la collection (jusqu'à 6,5 Mo)
     try {
-      const kept = this.friendInv.get(userId);
+      const kept = this.friendInv.get(userId) ?? (await this.friendFromDevice(userId));
       if (kept) {
-        const d = await this.client.query(api.inventory.userCollectionSince, { userId, since: kept.since() });
+        const d = await client.query(api.inventory.userCollectionSince, { userId, since: kept.m.since() });
         if (!d.more) {
-          kept.apply(d);
-          return kept.cards as Array<{ cardId: string; rarity: RarityId; count: number; bestMintNumber: number }>;
+          const changed = kept.m.apply(d);
+          this.keepFriend(userId, kept);
+          void saveFriendInv(userId, kept.at, changed ? kept.m.dump() : undefined);
+          return kept.m.cards as Out;
         }
       }
-      const r = await this.client.query(api.inventory.userCollectionSince, { userId });
       const m = new InvMirror();
-      m.reset((r.full ?? []).flat());
-      this.friendInv.delete(userId);
-      this.friendInv.set(userId, m);
-      if (this.friendInv.size > 30) this.friendInv.delete(this.friendInv.keys().next().value!);
-      return m.cards as Array<{ cardId: string; rarity: RarityId; count: number; bestMintNumber: number }>;
+      m.reset(await this.friendFull(userId));
+      const entry = { m, at: Date.now() };
+      this.keepFriend(userId, entry);
+      void saveFriendInv(userId, entry.at, m.dump());
+      return m.cards as Out;
     } catch {
       // serveur d'avant v2.1.32 (mise en ligne en cours)
       const r = await this.client.query(api.inventory.userCollectionSlim, { userId, parts: true });
       return 'parts' in r ? r.parts.flat() : r;
     }
   }
-  private friendInv = new Map<string, InvMirror>();
+  /** copies des collections d'amis ouvertes pendant la session (`at` : dernière lecture complète, filet de 30 jours) */
+  private friendInv = new Map<string, { m: InvMirror; at: number }>();
+  private keepFriend(userId: string, e: { m: InvMirror; at: number }) {
+    this.friendInv.delete(userId);
+    this.friendInv.set(userId, e);
+    if (this.friendInv.size > 30) this.friendInv.delete(this.friendInv.keys().next().value!);
+  }
+  private async friendFromDevice(userId: string): Promise<{ m: InvMirror; at: number } | null> {
+    const s = await loadFriendInv(userId);
+    if (!s) return null;
+    const m = new InvMirror();
+    m.reset(s.rows);
+    return { m, at: s.at };
+  }
+  /**
+   * Collection entière d'un ami : (V3) par pages (`cursor`, convex/inventory.ts USER_PAGE), remises dans l'ordre de
+   * création ; serveur d'avant la V3 (argument inconnu) : en un appel, comme avant.
+   */
+  private async friendFull(userId: Id<'users'>): Promise<InvRow[]> {
+    const client = this.client!;
+    let first;
+    try {
+      first = await client.query(api.inventory.userCollectionSince, { userId, cursor: null });
+    } catch {
+      return ((await client.query(api.inventory.userCollectionSince, { userId })).full ?? []).flat();
+    }
+    const got: Array<InvRow & { t?: number }> = [...(first.page ?? [])];
+    let cursor = first.cursor;
+    let done = first.done ?? true;
+    for (let i = 0; !done && cursor && i < 50; i++) {
+      const p = await client.query(api.inventory.userCollectionSince, { userId, cursor });
+      got.push(...(p.page ?? []));
+      cursor = p.cursor;
+      done = p.done ?? true;
+    }
+    got.sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+    return got.map(({ t: _t, ...r }) => r);
+  }
 
   /** (v1.0.9) « Chercher un propriétaire » : joueurs qui possèdent la carte (hors moi). */
   public async cardOwners(cardId: string) {
