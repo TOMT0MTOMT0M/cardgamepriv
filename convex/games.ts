@@ -8,7 +8,7 @@ import { getUserIdByToken, requireUser } from './auth';
 import { notify } from './push';
 import { RARITY_TIER, type RarityId } from './cardsCatalog';
 import { packChoiceValidator, stakeValidator } from './schema';
-import { addCoins, bumpWeekly, checkStake, giveCards, mint, patchEcon, recordFlow, secureRandom, takeCards } from './econLib';
+import { addCoins, addForgeCoins, bumpWeekly, checkStake, giveCards, mint, patchEcon, recordFlow, secureRandom, takeCards } from './econLib';
 import { bumpMissions } from './missions';
 import { applyRegen, fmtCountdown } from '../src/core/packRegen';
 import { isValidPackRequest, rollPack, type PackRequest } from '../src/core/packRoll';
@@ -89,7 +89,8 @@ async function openGamePack(ctx: MutationCtx, userId: Id<'users'>, choice: PackC
   }
   await ctx.db.patch(userId, { pityCount: pityAfter(pity, cards.map((c) => c.rarity)), totalPacksOpened: u.totalPacksOpened + 1 });
   const coins = rollPackCoins(choice.kind, secureRandom);
-  await addCoins(ctx, userId, coins, 'pack', fm('c.openGame', { pack: packChoiceLabel(choice), ...packRef(choice) }), { earned: true });
+  // (v2.1.39) pièces d'ouverture : rendement dégressif du jour, comme à la boutique
+  await addForgeCoins(ctx, userId, coins, 'pack', fm('c.openGame', { pack: packChoiceLabel(choice), ...packRef(choice) }));
   return cards;
 }
 

@@ -16,6 +16,7 @@ import {
   claimableAchievements,
   claimableCompletions,
   emptyEcon,
+  forgePay,
   PACK_PRICE,
   packBuyProblem,
   packBuysLeft,
@@ -119,7 +120,7 @@ export function createLocalEco(host: LocalEcoHost) {
     return {
       coins: s.coins,
       econ: s.econ,
-      calendar: { day, today: missionDay(now), claimed: s.econ.calendarDay === missionDay(now), reward: calendarReward(day) },
+      calendar: { day, today: missionDay(now), claimed: s.econ.calendarDay === missionDay(now), reward: calendarReward(day, now) },
       weekly: { ...currentWeekly(s.weekly, ME, now), resetAt: nextWeekReset(now) },
       completions: claimableCompletions(owned, s.econ.completions).map((x) => ({ id: x.id, label: x.label, kind: x.kind, size: x.cards.length, reward: x.reward })),
       achievements: { stats, claimable: claimableAchievements(stats, s.econ.achievements).map((a) => a.id) },
@@ -137,8 +138,15 @@ export function createLocalEco(host: LocalEcoHost) {
     watchers.forEach((fn) => fn());
   }
 
-  function coins(amount: number, reason: string, label: string | Msg, earned = false) {
+  /** (v2.1.39) `forge` : pièces de Forge ou d'ouverture, rendement dégressif du jour (forgePay). Renvoie les pièces versées. */
+  function coins(amount: number, reason: string, label: string | Msg, earned = false, forge = false) {
     const s = d();
+    if (forge) {
+      const now = Date.now();
+      const pay = forgePay(s.econ, amount, now, missionDay(now));
+      amount = pay.coins;
+      Object.assign(s.econ, pay.econ ?? {});
+    }
     amount = Math.round(amount);
     if (s.coins + amount < 0) throw new Error(fe('econLib.2', { p0: -(s.coins + amount) }));
     s.coins += amount;
@@ -147,6 +155,7 @@ export function createLocalEco(host: LocalEcoHost) {
       s.tx.unshift({ id: id('tx'), amount, reason, createdAt: Date.now(), ...(typeof label === 'string' ? { label } : { label: label.text, labelKey: label.key, ...(label.params ? { labelParams: label.params } : {}) }) });
       s.tx.length = Math.min(s.tx.length, 80);
     }
+    return amount;
   }
   function weekly(ev: WeeklyEvent) {
     const s = d();
@@ -182,7 +191,7 @@ export function createLocalEco(host: LocalEcoHost) {
     const escrow = du.sides.map((s) => (s.userId === ME ? { coins: s.stake.coins, cards: takeStake(s.stake) } : { coins: s.stake.coins, cards: [] as PotCard[] }));
     const packs = du.sides.map((s) => s.packs.map((p) => {
       const cards = host.roll(p, s.userId);
-      if (s.userId === ME) coins(rollPackCoins(p.kind, Math.random), 'pack', fm('c.openGame', { pack: packChoiceLabel(p), ...packRef(p) }), true);
+      if (s.userId === ME) coins(rollPackCoins(p.kind, Math.random), 'pack', fm('c.openGame', { pack: packChoiceLabel(p), ...packRef(p) }), true, true);
       return cards;
     }));
     const { stars, winner } = duelWinner(packs);
@@ -216,7 +225,7 @@ export function createLocalEco(host: LocalEcoHost) {
     const packs = r.players.map((p) =>
       Array.from({ length: n }, () => {
         const c = host.roll(p.pack, p.userId);
-        if (p.userId === ME) coins(rollPackCoins(p.pack.kind, Math.random), 'pack', fm('c.openGame', { pack: packChoiceLabel(p.pack), ...packRef(p.pack) }), true);
+        if (p.userId === ME) coins(rollPackCoins(p.pack.kind, Math.random), 'pack', fm('c.openGame', { pack: packChoiceLabel(p.pack), ...packRef(p.pack) }), true, true);
         return c;
       }).flat(),
     );
@@ -396,9 +405,9 @@ export function createLocalEco(host: LocalEcoHost) {
           n += it.count;
         }
         d().econ.burned += n;
-        coins(total, 'burn', fm('c.burn', { n }), true);
+        const paid = coins(total, 'burn', fm('c.burn', { n }), true, true);
         weekly({ type: 'burn', count: n });
-        return { coins: total, count: n };
+        return { coins: paid, count: n, value: total };
       }),
     claimCompletions: () =>
       act(() => {
@@ -554,7 +563,7 @@ export function createLocalEco(host: LocalEcoHost) {
     takeGodPack: () => extras.takeGodPack(),
     adventOpened: () => extras.opened(),
     onPack(kind: 'bebou' | 'theme', label: Msg, cards: Array<{ rarity: string; isNew: boolean }>) {
-      coins(rollPackCoins(kind, Math.random), 'pack', label, true);
+      coins(rollPackCoins(kind, Math.random), 'pack', label, true, true);
       weekly({ type: 'pack', cards });
       jeux.onPack(cards);
       emit();

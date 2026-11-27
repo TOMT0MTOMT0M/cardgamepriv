@@ -132,6 +132,8 @@ export function royaleResult(packs: GameCard[][], rand: () => number): { stars: 
  *      1 numéro = 1500 pièces · ou 2 cartes 5★ · ou 1 carte 6★
  * (25/11, V3) 1 numéro = 1 000 pièces (2 000 avec une couleur) · ou 2 cartes 5★ · ou 1 carte 6★ ; un ABONNÉ a une mise
  * GRATUITE par jour (un numéro, sans couleur : `freeBetProblem`), qui peut remporter le pot comme les autres.
+ * (v2.1.39, rework économie validé par Tom le 27/11) mise en cartes alignée sur la table de valeur : 3 cartes 5★ (900)
+ * au lieu de 2 (600), à côté d'une 6★ (1 000).
  */
 export const ROULETTE_NUMBERS = 36;
 /** numéros au plus par joueur et par tirage */
@@ -143,7 +145,7 @@ export type RoulettePrice = { kind: 'coins'; coins: number } | { kind: 'cards'; 
 /** Grille tarifaire : 1, 2 ou 3 numéros → les façons de payer (une seule par mise). */
 // (25/11, V3, Hugo) 1 000 pièces le numéro (2 000 avec une couleur) ; les cartes ne changent pas
 export const ROULETTE_PRICES: Record<1, RoulettePrice[]> = {
-  1: [{ kind: 'coins', coins: 1000 }, { kind: 'cards', rarity: 'legendary', count: 2 }, { kind: 'cards', rarity: 'mythic', count: 1 }],
+  1: [{ kind: 'coins', coins: 1000 }, { kind: 'cards', rarity: 'legendary', count: 3 }, { kind: 'cards', rarity: 'mythic', count: 1 }],
 };
 /** raretés acceptées en mise */
 export const ROULETTE_CARD_RARITIES: RarityId[] = ['legendary', 'mythic'];

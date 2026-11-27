@@ -50,6 +50,9 @@ export const econValidator = v.object({
   calendarDay: v.optional(v.string()),
   shopDay: v.optional(v.string()),
   shopBought: v.optional(v.number()),
+  /** (v2.1.39) Forge dégressive : jour (Paris) et valeur de Forge + pièces d'ouverture comptées ce jour-là */
+  forgeDay: v.optional(v.string()),
+  forgeRaw: v.optional(v.number()),
   completions: v.array(v.string()),
   achievements: v.array(v.string()),
 });

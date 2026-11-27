@@ -36,6 +36,15 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '28 Nov', title: '🪙 New economy on December 1st', tag: 'nouveau',
+        points: [
+          '📅 A much more generous daily login: day 1 = 250 coins (the price of a booster), +20 each day, ×2 on days 7, 14 and 21, and day 30 = 2,000 coins + 51 boosters. A perfect month brings 18,900 coins instead of 7,050.',
+          '🔥 Forge: each day, forged duplicates and booster opening coins pay 100% up to 3,000 coins, then 50% up to 10,000, then 25%. Everything goes back to 100% at midnight. The Forge screen shows how much full yield you have left.',
+          '🎲 Roulette, starting now: a card bet = 3 5★ cards (or still 1 6★ card, or 1,500 coins).',
+          'Why: the biggest openers were earning more than 10 times more coins a day than everyone else. Logging in every day now really counts.',
+        ],
+      },
+      {
         date: '27 Nov', title: 'One-tap trades: their wishes first', tag: 'amélioré',
         points: [
           '♥ “Ask” for a card from a player now offers them a card they’re looking for first: from their wishlist, and now also from the albums and families they want whole. The message tells you so.',

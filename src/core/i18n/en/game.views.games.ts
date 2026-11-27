@@ -176,7 +176,7 @@ export const en: PartOf<typeof fr> = {
   'gm.plusPotOnly': ' + {v} side pot',
   'gm.facing': 'other side:',
   'gm.royaleRules': '{min} to {max} players. The creator sets the bet: 1 to {packs} boosters, the same number for everyone (each picks their kind). They launch from {min} players (automatic start at {max}). Simultaneous opening: the highest star total wins all the cards; tied at the top → the cards are shared at random between them.',
-  'gm.rouletteRules': '<b>Number</b>: just 1 per draw (1,500 coins, 2 5★ cards or 1 6★ card); the exact number takes the pot. <b>Colour</b>: pay double to put red, black or green on your number — if nobody has the number that comes up, its colour takes the pot (biggest stake first). Otherwise the pot carries over. Draws at {hours}.',
+  'gm.rouletteRules': '<b>Number</b>: just 1 per draw (1,000 coins, 3 5★ cards or 1 6★ card); the exact number takes the pot. <b>Colour</b>: pay double to put red, black or green on your number — if nobody has the number that comes up, its colour takes the pot (biggest stake first). Otherwise the pot carries over. Draws at {hours}.',
   'gm.and': ' and ',
   'gm.reserveDebit': { one: 'Reserve: {n} booster ({d} charged at launch).', other: 'Reserve: {n} boosters ({d} charged at launch).' },
   'gm.royalesWaiting': '{games} waiting ({list})',

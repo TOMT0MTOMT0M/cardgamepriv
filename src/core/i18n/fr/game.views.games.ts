@@ -175,7 +175,7 @@ export const fr = {
   'gm.plusPotOnly': ' + {v} de pot annexe',
   'gm.facing': 'en face :',
   'gm.royaleRules': '{min} à {max} joueurs. Le créateur fixe la mise : de 1 à {packs} boosters, le même nombre pour tout le monde (chacun choisit sa sorte). Il lance dès {min} joueurs (départ automatique à {max}). Ouverture simultanée : le plus haut total d\'étoiles remporte toutes les cartes ; ex æquo en tête → les cartes sont partagées au hasard entre eux.',
-  'gm.rouletteRules': '<b>Numéro</b> : 1 seul par tirage (1 500 pièces, 2 cartes 5★ ou 1 carte 6★) ; le numéro exact rafle le pot. <b>Couleur</b> : en payant le double, pose rouge, noir ou vert sur ton numéro — si personne n’a le numéro sorti, sa couleur rafle le pot (la plus grosse mise d’abord). Sinon le pot est reporté. Tirages à {hours}.',
+  'gm.rouletteRules': '<b>Numéro</b> : 1 seul par tirage (1 000 pièces, 3 cartes 5★ ou 1 carte 6★) ; le numéro exact rafle le pot. <b>Couleur</b> : en payant le double, pose rouge, noir ou vert sur ton numéro — si personne n’a le numéro sorti, sa couleur rafle le pot (la plus grosse mise d’abord). Sinon le pot est reporté. Tirages à {hours}.',
   'gm.and': ' et ',
   'gm.reserveDebit': { one: 'Réserve : {n} booster ({d} débité au lancement).', other: 'Réserve : {n} boosters ({d} débités au lancement).' },
   'gm.royalesWaiting': '{games} en attente ({list})',

@@ -4,7 +4,8 @@ import type { MutationCtx, QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import type { RarityId } from './cardsCatalog';
 import { catalogCard } from './cardsCatalog';
-import { cleanEcon, emptyEcon, type EconState } from '../src/core/economy';
+import { cleanEcon, emptyEcon, forgePay, type EconState } from '../src/core/economy';
+import { missionDay } from '../src/core/missions';
 import { applyWeeklyEvent, cleanWeekly, currentWeekly, type WeeklyEvent, type WeeklyState } from '../src/core/weekly';
 import { lockedCards } from './trades';
 import { dropInv, invRev } from './invRev';
@@ -47,6 +48,19 @@ export async function addCoins(ctx: MutationCtx, userId: Id<'users'>, amount: nu
       ...(typeof label === 'string' ? { label } : { label: label.text, labelKey: label.key, ...(label.params ? { labelParams: label.params } : {}) }),
     });
   return coins;
+}
+
+/**
+ * (v2.1.39) Pièces de Forge ou d'ouverture : rendement dégressif par jour à partir du 01/12 (src/core/economy.ts
+ * `forgePay`). Renvoie les pièces réellement versées. Le joueur est lu une fois (`live` s'il est déjà lu).
+ */
+export async function addForgeCoins(ctx: MutationCtx, userId: Id<'users'>, raw: number, reason: string, label: string | Msg, opts: { econ?: Partial<EconState>; live?: Doc<'users'> } = {}) {
+  const u = opts.live ?? (await ctx.db.get(userId));
+  if (!u) throw new ConvexError(fe('econLib.1'));
+  const now = Date.now();
+  const pay = forgePay({ ...econOf(u), ...(opts.econ ?? {}) }, raw, now, missionDay(now));
+  await addCoins(ctx, userId, pay.coins, reason, label, { earned: true, live: u, econ: { ...(opts.econ ?? {}), ...(pay.econ ?? {}) } });
+  return pay.coins;
 }
 
 /** Modifie les compteurs de l'économie sans toucher aux pièces. */

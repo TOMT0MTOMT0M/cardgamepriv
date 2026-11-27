@@ -2,7 +2,8 @@ import { t as tr } from '../../core/i18n';
 import type { GameBackend, GameState } from '../backend';
 import { cardKey, lockedCards } from '../backend';
 import type { Shell } from '../shell';
-import { BURN_MAX_ITEMS, CARD_VALUE, burnable, cardsValue, fmtCoins, type StakeItem } from '../../core/economy';
+import { BURN_MAX_ITEMS, CARD_VALUE, FORGE_FULL, FORGE_TIERS, burnable, cardsValue, econV2, fmtCoins, forgeDone, forgeYield, type StakeItem } from '../../core/economy';
+import { missionDay } from '../../core/missions';
 import { rarity, starCount, type RarityId } from '../../core/rarity';
 import { catalogEntry } from '../../core/sets/themes';
 import { busyButton, cardTile, errMsg, esc, fmtN, h, plural, toast } from '../ui';
@@ -111,6 +112,9 @@ export function createForge(backend: GameBackend, shell: Shell) {
     sum: HTMLElement;
     sumTxt: HTMLElement;
     sumCoins: HTMLElement;
+    /** (v2.1.39) « (valeur X) » quand le rendement du jour a baissé, et la ligne du rendement */
+    was: HTMLElement;
+    yieldEl: HTMLElement;
     burn: HTMLButtonElement;
     burnHtml: string;
     grid: HTMLElement;
@@ -185,11 +189,12 @@ export function createForge(backend: GameBackend, shell: Shell) {
     const free = dups.reduce((a, d) => a + d.spare, 0);
     el.innerHTML = `<div class="gm-panel gm-forge"><div class="gm-ph"><b>${tr('fg.title')}</b><span class="muted">${tr('fg.count', { n: free, nf: fmtN(free), locked: lockedN ? tr('fg.locked', { n: lockedN, nf: fmtN(lockedN) }) : '' })}</span></div> <!-- i18n-ok -->
       <div class="muted fg-rate">${tr('fg.values')}</div>
+      <div class="muted fg-yield"></div>
       <div class="gm-quick">${rars.map((r) => `<button class="chip" data-q="${r}" style="--rc:${rarity(r).hex}"></button>`).join('')}${rars.filter((r) => starCount(r) <= LOW_MAX_STARS).length > 1 ? '<button class="chip gm-low" data-qle="1"></button>' : ''}<button class="btn-ghost sm gm-none"></button><button class="linkish gm-undo" hidden>${tr('fg.cancelQuick')}</button></div>
       ${anyMark ? `<div class="gm-legend-p muted">${esc(LEGEND)}</div>` : ''}
       <div class="gm-legend-p muted gm-full" hidden>${tr('fg.maxItems', { n: BURN_MAX_ITEMS })}</div>
       <div class="gm-fgrid"></div>
-      <div class="gm-ffoot"><span><span class="muted">${tr('fg.tapHint')}</span><span class="fg-sum" hidden><span></span> → ${coinsHtml(0)}</span></span><button class="btn-primary gm-burn"></button></div></div>`;
+      <div class="gm-ffoot"><span><span class="muted">${tr('fg.tapHint')}</span><span class="fg-sum" hidden><span></span> → ${coinsHtml(0)} <small class="muted fg-was" hidden></small></span></span><button class="btn-primary gm-burn"></button></div></div>`;
     const grid = el.querySelector<HTMLElement>('.gm-fgrid')!;
     const none = el.querySelector<HTMLButtonElement>('.gm-none')!;
     none.textContent = tr('fg.nothing');
@@ -204,6 +209,8 @@ export function createForge(backend: GameBackend, shell: Shell) {
       sum: el.querySelector<HTMLElement>('.fg-sum')!,
       sumTxt: el.querySelector<HTMLElement>('.fg-sum > span')!,
       sumCoins: el.querySelector<HTMLElement>('.fg-sum .coins-v > b')!,
+      was: el.querySelector<HTMLElement>('.fg-was')!,
+      yieldEl: el.querySelector<HTMLElement>('.fg-yield')!,
       burn: el.querySelector<HTMLButtonElement>('.gm-burn')!,
       burnHtml: '\0',
       grid,
@@ -256,6 +263,21 @@ export function createForge(backend: GameBackend, shell: Shell) {
     if (!ui) return;
     const n = selCount();
     const total = cardsValue([...sel.values()]);
+    // (v2.1.39) rendement dégressif du jour à partir du 01/12 : `paid` = ce que la fournée rapporte vraiment
+    const now = Date.now();
+    const v2 = econV2(now);
+    const eco = backend.eco.snapshot;
+    const done = v2 && eco ? forgeDone(eco.econ, missionDay(now)) : 0;
+    const paid = v2 ? forgeYield(done, total) : total;
+    const cap = FORGE_TIERS[1][0];
+    const yieldTxt = !v2
+      ? tr('fg.yieldSoon', { full: fmtCoins(FORGE_FULL), cap: fmtCoins(cap) })
+      : done < FORGE_FULL
+        ? tr('fg.yieldFull', { n: fmtCoins(FORGE_FULL - done) })
+        : done < cap
+          ? tr('fg.yieldHalf', { n: fmtCoins(cap - done) })
+          : tr('fg.yieldQuarter');
+    if (ui.yieldEl.textContent !== yieldTxt) ui.yieldEl.textContent = yieldTxt;
     const selBy = new Map<RarityId, number>();
     for (const v of sel.values()) selBy.set(v.rarity, (selBy.get(v.rarity) ?? 0) + 1);
     for (const c of ui.chips) {
@@ -293,10 +315,13 @@ export function createForge(backend: GameBackend, shell: Shell) {
     if (n) {
       const txt = `${plural(n, 'carte')} (${cardsSummary([...sel.values()])})`;
       if (ui.sumTxt.textContent !== txt) ui.sumTxt.textContent = txt;
-      const c = fmtCoins(total);
+      const c = fmtCoins(paid);
       if (ui.sumCoins.textContent !== c) ui.sumCoins.textContent = c;
+      const was = paid < total ? `(${tr('fg.valueWas', { v: fmtCoins(total) })})` : '';
+      if (ui.was.textContent !== was) ui.was.textContent = was;
+      ui.was.hidden = !was;
     }
-    const burnHtml = tr('fg.burn', { x: n ? ` · +${fmtCoins(total)}` : '' });
+    const burnHtml = tr('fg.burn', { x: n ? ` · +${fmtCoins(paid)}` : '' });
     const b = ui.burn;
     // la sélection a changé pendant un « Confirmer ? » : on désarme (on confirmerait autre chose que ce qui est affiché)
     if (b.dataset.armedAt && burnHtml !== ui.burnHtml) {
