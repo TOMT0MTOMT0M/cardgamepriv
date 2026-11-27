@@ -285,6 +285,16 @@ export const registry: RegistryEntry[] = [
     hint: 'Touche le sachet = thème suivant · planche en haut : touche une vignette · « piste » dans le panneau · `?piste=bd&theme=tele`',
     load: () => import('../experiments/046-sachets-cartoon/index.ts'),
   },
+  {
+    id: '047-sachets-autocollant',
+    title: 'Sachets Autocollant sur alu (6 thèmes × 2 variantes)',
+    category: 'B',
+    tags: ['sachet', 'booster', 'autocollant', 'thèmes', 'FR / EN'],
+    tech: ['le sachet simple du jeu comme support (alu teinté, plis par booster, nom thermoformé)', 'autocollants découpés : une petite toile par sticker, liseré par dilatation de la silhouette', 'un masque demi-définition (papier / vinyle / dos) qui retire le métal sous les stickers', 'pose tirée par la graine du booster'],
+    blurb: 'La piste « Autocollant » sur la vraie matière : rien d’imprimé sur l’alu, les thèmes se reconnaissent aux stickers collés dessus. 6 sachets × 2 variantes (le booster du moment est un gabarit : Télé, Noël), à côté du sachet actuel.',
+    hint: 'Planche : vignettes à 80 px (actuel / A / B), touche-en une · toucher le sachet = A ↔ B · réglages : langue, booster n°, essai de teinte · `?s=monde&v=b&l=en`',
+    load: () => import('../experiments/047-sachets-autocollant/index.ts'),
+  },
 ];
 
 /**
