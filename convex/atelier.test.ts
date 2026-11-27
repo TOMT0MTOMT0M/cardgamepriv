@@ -59,9 +59,11 @@ describe('personnalisation du profil — catalogue du 14/11', () => {
     for (const id of ['n-orbite', 'coffre', 'grave']) expect(tierOf(id), id).toBeGreaterThanOrEqual(3);
   });
 
-  test('49 paliers de plus (139 en tout), ids uniques, échelle « Tous les thèmes »', () => {
-    expect(ACHIEVEMENTS).toHaveLength(139); // (25/11) + 2 de la saison 0 ; (v2.1.13) les cosmétiques de l'Avent viennent des cases, plus de succès noel26-…
-    expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(139);
+  test('49 paliers de plus (166 en tout), ids uniques, échelle « Tous les thèmes »', () => {
+    // (25/11) + 2 de la saison 0 ; (v2.1.13) les cosmétiques de l'Avent viennent des cases, plus de succès noel26-… ;
+    // (V3, 27/11) + 27 paliers longs (refonte des succès, docs/chantiers/succes.md)
+    expect(ACHIEVEMENTS).toHaveLength(166);
+    expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(166);
     const all = achievementStats({ ...zero, worldUniques: 120, gamingUniques: 30, popUniques: 400, sportUniques: 26 }, emptyEcon());
     expect(all.allThemes).toBe(26);
     expect(achievementDone(ACHIEVEMENTS.find((a) => a.id === 'all-25')!, all)).toBe(true);
