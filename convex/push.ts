@@ -6,6 +6,7 @@ import type { Doc, Id } from './_generated/dataModel';
 import { requireUser } from './auth';
 import { patchLive } from './liveUser';
 import { fullAt } from '../src/core/packRegen';
+import { parisHour } from '../src/core/games';
 import { fm, type Msg } from '../src/core/msgs';
 import { msgIn, userLang } from './i18nServer';
 import { msgParamsValidator } from './schema';
@@ -39,11 +40,8 @@ export interface Payload {
   tag?: string;
 }
 
-/** heure de Paris (0..23) */
-function parisHour(t: number): number {
-  const h = Number(new Intl.DateTimeFormat('fr-FR', { hour: 'numeric', hour12: false, timeZone: 'Europe/Paris' }).format(new Date(t)));
-  return h % 24;
-}
+// (v2.1.43) l'heure de Paris vient de src/core/games.ts : l'ancienne version lisait « 22 h » (format fr-FR) et obtenait
+// NaN, donc la nuit 23 h - 8 h n'était jamais reconnue (push envoyés en pleine nuit, rien reporté à 8 h)
 /** prochain 8 h (Paris) après `t` */
 function next8h(t: number): number {
   // on avance par pas d'un quart d'heure jusqu'à 8 h : simple et juste avec l'heure d'été

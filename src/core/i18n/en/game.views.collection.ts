@@ -35,6 +35,7 @@ export const en: PartOf<typeof fr> = {
   'coll.empty': 'your collection is empty:',
   'coll.openFirst': 'open your first booster',
   'coll.burn': 'to burn in a contract',
+  'coll.toForge': 'to forge',
   'coll.orTrade': 'or to trade',
   'coll.complete': 'selection complete!',
   'coll.noDup': 'no duplicates yet',

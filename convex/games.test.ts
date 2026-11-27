@@ -16,6 +16,7 @@ import { missionDay } from '../src/core/missions';
 const BEFORE = ECON_V2_AT - 60_000;
 const AFTER = ECON_V2_AT + 12 * 3600_000;
 import { betProblem, nextRouletteDraw, parisHour, potsBalanced, royaleResult, rouletteSlot } from '../src/core/games';
+import { isNightParis } from './push';
 
 const modules = import.meta.glob(['./**/*.ts', './**/*.js', '!./**/*.test.ts', '!./**/*.d.ts']);
 
@@ -84,6 +85,11 @@ describe('règles pures', () => {
   test('roulette : tirages à 10 h et 20 h, heure de Paris (heure d’hiver et d’été)', () => {
     expect(parisHour(Date.UTC(2026, 10, 3, 0, 30))).toBe(1); // hiver : UTC+1
     expect(parisHour(Date.UTC(2026, 6, 3, 0, 30))).toBe(2); // été : UTC+2
+    // (v2.1.43) la nuit des notifications (23 h - 8 h Paris) est reconnue : avant, l'heure lue en « 22 h » valait NaN
+    expect(isNightParis(Date.UTC(2026, 10, 27, 22, 30))).toBe(true); // 23 h 30 Paris (hiver)
+    expect(isNightParis(Date.UTC(2026, 10, 27, 6, 30))).toBe(true); // 7 h 30
+    expect(isNightParis(Date.UTC(2026, 10, 27, 7, 0))).toBe(false); // 8 h
+    expect(isNightParis(Date.UTC(2026, 10, 27, 21, 59))).toBe(false); // 22 h 59
     // hiver : 10 h Paris = 9 h UTC, 20 h Paris = 19 h UTC
     expect(new Date(nextRouletteDraw(Date.UTC(2026, 10, 3, 7, 0))).toISOString()).toBe('2026-11-03T09:00:00.000Z');
     expect(new Date(nextRouletteDraw(Date.UTC(2026, 10, 3, 9, 30))).toISOString()).toBe('2026-11-03T19:00:00.000Z');

@@ -34,6 +34,8 @@ export const fr = {
   'coll.empty': 'ta collection est vide :',
   'coll.openFirst': 'ouvre ton premier booster',
   'coll.burn': 'à brûler en contrat',
+  // (v2.1.43) après le retrait des contrats (01/12)
+  'coll.toForge': 'à forger',
   'coll.orTrade': 'ou à échanger',
   'coll.complete': 'sélection complète !',
   'coll.noDup': 'pas encore de doublon',

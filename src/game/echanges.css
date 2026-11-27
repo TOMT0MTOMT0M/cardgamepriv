@@ -67,7 +67,9 @@
 .ex-none { padding: 14px 0; font-size: 13px; }
 .ex-zone { padding-top: 16px; }
 @media all {
-  .ex-zone:not([hidden]) { animation: ex-in var(--dur-standard) var(--ease-entree) both; }
+  /* (v2.1.43) `backwards`, pas `both` : une fois entrée, la zone ne garde pas de `transform` (même neutre), sinon elle devient
+     le cadre des feuilles `position: fixed` qu'elle contient (feuille « Vendre ou échanger » ouverte en bas de page au téléphone) */
+  .ex-zone:not([hidden]) { animation: ex-in var(--dur-standard) var(--ease-entree) backwards; }
 }
 @keyframes ex-in { from { opacity: 0; transform: translateY(6px); } }
 

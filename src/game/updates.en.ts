@@ -26,6 +26,14 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '28 Nov', title: '🔧 Night notifications, selling on phones', tag: 'corrigé',
+        points: [
+          '🌙 No more notifications in the middle of the night: between 11 pm and 8 am, they wait until 8 am, as promised in the settings. The roulette reminder also shows the right draw time.',
+          '📱 On phones, the “Sell or trade a card” sheet now opens on screen (it used to open at the bottom of the page).',
+          '🔨 From December 1st, your duplicates are “to forge or to trade” in the Collection, with a direct link to the Forge.',
+        ],
+      },
+      {
         date: '28 Nov', title: '🖼️ Jubelle has artwork', tag: 'corrigé',
         points: [
           '🖼️ Jubelle (Summoners War) was the last card still without a picture: the card now has its artwork, in the collection and full size.',

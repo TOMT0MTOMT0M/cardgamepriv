@@ -27,6 +27,7 @@ import {
   nextRouletteDraw,
   packChoiceLabel,
   packRef,
+  parisHour,
   rouletteSlot,
   royaleResult,
   validPackChoice,
@@ -508,8 +509,8 @@ async function warnRoulette(ctx: MutationCtx, r: Doc<'rouletteRounds'>) {
   await ctx.db.patch(r._id, { warned: true });
   const subs = await ctx.db.query('pushSubs').collect();
   const users = new Set(subs.map((s) => s.userId as string));
-  const at = new Date(drawInstant(r));
-  const hour = Number(new Intl.DateTimeFormat('fr-FR', { hour: 'numeric', hour12: false, timeZone: 'Europe/Paris' }).format(at)) % 24;
+  // (v2.1.43) « 20 h » en fr-FR donnait NaN (titre « tirage de NaN h ») : heure lue par parisHour (src/core/games.ts)
+  const hour = parisHour(drawInstant(r));
   const pot = r.carriedCoins + r.bets.reduce((a, b) => a + b.coins, 0);
   for (const id of users)
     await notify(ctx, id as Id<'users'>, { kind: 'roulette', title: `Roulette : tirage de ${hour} h dans 10 min`, body: `${r.bets.length ? `${r.bets.length} joueur${r.bets.length > 1 ? 's' : ''} déjà en jeu` : 'Personne n’a encore misé'}${pot ? ` · ${pot} pièces au pot` : ''}. Viens miser ou regarder la bille tomber.`, url: '#/jeux/roulette', tag: 'roulette' }, { at: Date.now() });
