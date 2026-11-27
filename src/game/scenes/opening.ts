@@ -80,7 +80,7 @@ import { createStage } from '../../core/stage';
 import { studioEnv } from '../../core/env';
 import { mobileArtScale } from '../../core/renderer';
 import { anamorphicFlare, createPipeline } from '../../core/post';
-import { aluminiumSurface, createPackGeometry, generatePackArt, packCreaseLift, PACK, PACK_FRAME, PACK_STACK, TEAR_V, type PackArt, type PackStyle } from '../../core/pack';
+import { createPackGeometry, generatePackArt, packCreaseLift, PACK, PACK_FRAME, PACK_STACK, PLASTIC_TINT, TEAR_V, type PackArt, type PackStyle } from '../../core/pack';
 import { gameSachetArt, inkSurface } from '../../core/packSticker';
 import { ensureCardImages, ensureFonts, generateCardArt, type CardArt } from '../../core/art';
 import { LAB_CARDS, cardById, type CardData } from '../../core/cardData';
@@ -1147,10 +1147,6 @@ export function createOpeningScene(): OpeningScene {
     const back = texture(art.back, uvn);
     const masks = texture(art.masks, uvn);
     tearNodes.push({ front, back, masks } as unknown as Record<'front' | 'back' | 'masks', { value: Texture }>);
-    const crF = art.fullCrease ? texture(art.crinkle, uvn) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
-    const crB = art.fullCrease ? texture(art.crinkle, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
-    track(tearSwaps, crF, (a) => a.crinkle);
-    track(tearSwaps, crB, (a) => a.crinkle);
     // (07/11 soir) normales des plis en flottants (core/pack.ts) : plus de paliers du bumpMap 8 bits ; face avant : + nom moulé
     const nF = art.frontNormal ? texture(art.frontNormal, uvn) : art.creaseNormal ? texture(art.creaseNormal, uvn) : undefined;
     const nB = art.creaseNormal ? texture(art.creaseNormal, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : undefined;
@@ -1164,16 +1160,17 @@ export function createOpeningScene(): OpeningScene {
     // plastique étiré : blanchit le long de la coupe, plus large juste derrière le front de déchirure
     const front0 = smoothstep(0.12, 0.0, TP.sub(ug)).mul(tornCol);
     const whiten = smoothstep(float(0.006).add(front0.mul(0.012)), 0.0, abs(v.sub(edge))).mul(tornCol);
-    const make = (col: N, cr: N, side: 0 | 1) => {
-      const m = new MeshPhysicalNodeMaterial({ side: DoubleSide });
-      const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(masks.g), 0, 1).normalize();
-      m.colorNode = mix(select(frontFacing, col.rgb, tearInner as unknown as N), color(0.94, 0.93, 0.91), whiten.mul(0.85));
-      // (07/11) aluminium lisse, grands plis, double reflet métal + vernis PET (core/pack.ts aluminiumSurface) ;
-      // l'intérieur (face arrière) reste métal brut plus mat, la coupe blanchit (film étiré)
-      aluminiumSurface(m, cr.r, masks.r, ridges, art.fullCrease ? 3.4 : 1.4, side === 0 ? nF : nB);
+    const make = (col: N, side: 0 | 1) => {
+      // (27/11, V3) l'extérieur : la surface du sachet « Autocollant » (inkSurface, comme le sachet scellé) ; l'intérieur
+      // (face arrière) reste métal brut plus mat, la coupe blanchit (film étiré)
+      const m = new MeshStandardNodeMaterial({ side: DoubleSide });
+      const S = inkSurface(masks, uvn, side, side === 0 ? nF : nB);
+      const out = select(frontFacing, S.tint(col.rgb), (tearInner as unknown as N).mul(PLASTIC_TINT));
+      m.colorNode = mix(out, color(0.94, 0.93, 0.91).mul(PLASTIC_TINT), whiten.mul(0.85));
+      m.normalNode = S.normal;
       m.envNode = foilEnvNode();
-      m.metalnessNode = float(1).mul(whiten.oneMinus());
-      m.roughnessNode = select(frontFacing, m.roughnessNode as N, float(0.3)).add(whiten.mul(0.4));
+      m.metalnessNode = select(frontFacing, S.metal, float(1)).mul(whiten.oneMinus());
+      m.roughnessNode = select(frontFacing, S.rough, float(0.3)).add(whiten.mul(0.4));
       // fuite de lumière (003) : soudures + impression claire, de la couleur de la meilleure carte
       // (S3) fente de lumière rasante : passé ~35 % (TSLIT), la lumière de l'intérieur filtre par la coupe déjà ouverte —
       // un filet sur la tranche, et la face intérieure des lèvres éclairée en rasant près de la coupe (elle se voit quand
@@ -1181,7 +1178,7 @@ export function createOpeningScene(): OpeningScene {
       const dv = abs(v.sub(edge));
       const rimL = smoothstep(0.005, 0.0, dv);
       const slit = select(frontFacing, rimL.mul(0.5), smoothstep(0.05, 0.0, dv).pow(2).mul(0.9).add(rimL)).mul(tornCol).mul(TSLIT);
-      m.emissiveNode = (U.ember as unknown as N).mul(masks.b.mul(1.4).add(masks.g.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak).mul(whiten.oneMinus()).add(slit));
+      m.emissiveNode = (U.ember as unknown as N).mul(masks.b.mul(1.4).add(S.crans.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak).mul(whiten.oneMinus()).add(slit));
       // même relief des plis que le booster entier (sa carte de hauteur), sinon la coupe ne raccorde pas
       const crLift = creaseLift(tearSwaps, art, side);
       if (baked) {
@@ -1208,7 +1205,7 @@ export function createOpeningScene(): OpeningScene {
       }
       return m;
     };
-    return [make(front, crF, 0), make(back, crB, 1)];
+    return [make(front, 0), make(back, 1)];
   }
 
   /**
@@ -1226,34 +1223,28 @@ export function createOpeningScene(): OpeningScene {
     const back = texture(art.back, uvn);
     const masks = texture(art.masks, uvn);
     tearNodes.push({ front, back, masks } as unknown as Record<'front' | 'back' | 'masks', { value: Texture }>);
-    const crF = art.fullCrease ? texture(art.crinkle, uvn) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)));
-    const crB = art.fullCrease ? texture(art.crinkle, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : texture(art.crinkle, uvn.mul(vec2(1.6, 2.4)).add(0.37));
-    track(tearSwaps, crF, (a) => a.crinkle);
-    track(tearSwaps, crB, (a) => a.crinkle);
     const nF = art.frontNormal ? texture(art.frontNormal, uvn) : art.creaseNormal ? texture(art.creaseNormal, uvn) : undefined;
     const nB = art.creaseNormal ? texture(art.creaseNormal, uvn.mul(vec2(-1, 1)).add(vec2(1, 0))) : undefined;
     if (nF) track(tearSwaps, nF, (a) => a.frontNormal ?? a.creaseNormal);
     if (nB) track(tearSwaps, nB, (a) => a.creaseNormal);
     const inner = (tearInner as unknown as N).mul(ROLL_INNER.tint);
-    const make = (col: N, cr: N, side: 0 | 1) => {
-      const m = new MeshPhysicalNodeMaterial({ side: DoubleSide });
-      const ridges = vec3(sin(positionLocal.x.mul(1600)).mul(0.6).mul(masks.g), 0, 1).normalize();
-      m.colorNode = select(frontFacing, col.rgb, inner);
-      aluminiumSurface(m, cr.r, masks.r, ridges, art.fullCrease ? 3.4 : 1.4, side === 0 ? nF : nB);
+    const make = (col: N, side: 0 | 1) => {
+      // (27/11, V3) l'extérieur : la surface du sachet « Autocollant » (inkSurface, plus de vernis) ; l'envers : alu mat
+      const m = new MeshStandardNodeMaterial({ side: DoubleSide });
+      const S = inkSurface(masks, uvn, side, side === 0 ? nF : nB);
+      m.colorNode = select(frontFacing, S.tint(col.rgb), inner.mul(PLASTIC_TINT));
+      m.normalNode = S.normal;
       m.envNode = foilEnvNode();
-      m.metalnessNode = select(frontFacing, float(1), float(ROLL_INNER.metal));
-      m.roughnessNode = select(frontFacing, m.roughnessNode as N, float(ROLL_INNER.rough));
-      // vernis PET de l'aluminiumSurface : seulement à l'extérieur
-      m.clearcoatNode = select(frontFacing, m.clearcoatNode as N, float(0));
-      m.clearcoatRoughnessNode = select(frontFacing, m.clearcoatRoughnessNode as N, float(1));
+      m.metalnessNode = select(frontFacing, S.metal, float(ROLL_INNER.metal));
+      m.roughnessNode = select(frontFacing, S.rough, float(ROLL_INNER.rough));
       // fuite de lumière (003) à l'extérieur, comme le sachet scellé ; l'envers n'émet rien
-      m.emissiveNode = select(frontFacing, (U.ember as unknown as N).mul(masks.b.mul(1.4).add(masks.g.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak)), vec3(0, 0, 0));
+      m.emissiveNode = select(frontFacing, (U.ember as unknown as N).mul(masks.b.mul(1.4).add(S.crans.mul(0.35)).add(leakPrint(col, positionLocal.xy)).mul(U.leak)), vec3(0, 0, 0));
       // positions et normales écrites par TearBakePlayer ; le relief des plis du booster s'ajoute selon la normale
       const crLift = creaseLift(tearSwaps, art, side);
       if (crLift) m.positionNode = positionLocal.add(normalLocal.mul(side === 0 ? crLift.z : crLift.z.negate()));
       return m;
     };
-    return [make(front, crF, 0), make(back, crB, 1)];
+    return [make(front, 0), make(back, 1)];
   }
 
   function applyTearArt(k: string) {
