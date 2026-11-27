@@ -289,13 +289,14 @@ export const TITLES: Cosmetic[] = [
  * déchirure pour tout le monde, les autres se GAGNENT (un succès chacune). Le choix vaut pour tous les boosters ; il est
  * gardé au serveur (`users.cosmetics.opening`, convex/profiles.ts `setOpening`, refusé si verrouillé). Mise en scène :
  * src/game/scenes/opening.ts (`openStyleOf`).
+ * (27/11, V3) Brûlure (`burn`) et Éventail (`fan`) retirés, sans migration : un choix resté rangé chez un joueur est
+ * inconnu ici, donc refusé par `setOpening` et joué comme la déchirure par le client. Leurs succès (`burn-250`,
+ * `world-150`) gardent leur identifiant et débloqueront deux des nouvelles ouvertures (docs/chantiers/ouvertures.md).
  */
-export type OpeningId = 'tear' | 'burn' | 'fan' | 'retrousse' | 'glace' | 'etoile';
+export type OpeningId = 'tear' | 'retrousse' | 'glace' | 'etoile';
 // i18n-data:début
 export const OPENINGS: Array<Cosmetic & { id: OpeningId; blurb: string }> = [
   Object.defineProperty(derive(C({ id: 'tear', label: 'Déchirure' }), { id: 'tear' }), 'blurb', { get: () => tData('cos.blurb.tear', 'Glisse le doigt pour déchirer le haut du booster.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
-  Object.defineProperty(derive(C({ id: 'burn', label: 'Brûlure', need: 'burn-250' }), { id: 'burn' }), 'blurb', { get: () => tData('cos.blurb.burn', 'Maintiens pour brûler l’emballage depuis le centre.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
-  Object.defineProperty(derive(C({ id: 'fan', label: 'Éventail', need: 'world-150' }), { id: 'fan' }), 'blurb', { get: () => tData('cos.blurb.fan', 'Un toucher arrache le haut, les cartes s’ouvrent en éventail.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
   // (V3) Retroussé : geste vers le bas, le sachet se retourne (simulation cuite hors ligne, src/game/scenes/opening.ts)
   Object.defineProperty(derive(C({ id: 'retrousse', label: 'Retroussé', need: 'packs-750' }), { id: 'retrousse' }), 'blurb', { get: () => tData('cos.blurb.retrousse', 'Glisse vers le bas : le sachet se retourne et laisse les cartes debout.'), enumerable: true }) as Cosmetic & { id: OpeningId; blurb: string },
   // (v2.1.13) Avent 2026 : la déchirure, avec un éclat de givre ou une pluie d'étoiles (src/game/scenes/opening.ts)

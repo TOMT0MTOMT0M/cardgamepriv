@@ -92,7 +92,7 @@ import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
 import { dropBakes, loadBakes, loadTearBakes, loadedBakes, loadedBakesOf, TearBakePlayer, type BakeFamily, type TearBake } from '../../core/tearBake';
 import type { TearBakeEvent } from '../../core/tearBakeFormat';
-import { DUR, ECLIPSE, MYTHIC_SILENCE, MYTHIC_TURN, RETROUSSE, STAGGER, TEASE_LAST_EXTRA, TEASE_STAGGER, TIER_BEAT } from '../../core/motion';
+import { DUR, ECLIPSE, MYTHIC_SILENCE, MYTHIC_TURN, RETROUSSE, STAGGER, TIER_BEAT } from '../../core/motion';
 import { burnNoise, fbmTexel, preloadNoise, type N } from '../../core/tsl';
 import { isEclipseCard } from '../eclipse';
 import { apostleStrip } from '../apostles';
@@ -119,37 +119,34 @@ import type { PackCard, SealedPack } from '../backend';
  * pack est tiré, ses 5 cartes sont générées et compilées pendant que le joueur brûle l'emballage.
  */
 /**
- * Mise en scène de l'ouverture, PAR BOOSTER (demande de Tom, 2 nov.) :
- *  - `burn` (Gaming, et les thèmes sans style dédié) : maintenir pour brûler l'emballage, pile révélée carte par carte ;
- *  - `tear` (Bebou Pack, labo 002) : on DÉCHIRE le haut du booster en glissant le doigt (ou un toucher = déchirure
- *    auto). Vraie bande 3D qui se décolle et s'enroule, bord dentelé, plastique qui blanchit, lambeaux ; les cartes sont
- *    DANS le booster (pile serrée, plus petite que le coussin : rien ne traverse l'emballage) et en sortent par le haut ;
- *  - `fan` (World Pack, labo 013, version rapide) : un toucher arrache le haut, les cartes s'ouvrent en éventail faces
- *    cachées, chaque toucher retourne la suivante (de la moins rare à la plus rare), sans attendre.
+ * Mise en scène de l'ouverture (le choix du joueur vaut pour tous les boosters) :
+ *  - `tear` (labo 002) : on DÉCHIRE le haut du booster en glissant le doigt (ou un toucher = déchirure auto). Film
+ *    simulé et cuit (tearBake.ts), bord dentelé, plastique qui blanchit, lambeaux ; les cartes sont DANS le booster
+ *    (pile serrée, plus petite que le coussin : rien ne traverse l'emballage) et en sortent par le haut ;
+ *  - `retrousse` (27/11, à gagner) : on glisse vers le bas, le film se retourne et laisse les cartes debout.
+ * (27/11, V3) Brûlure (`burn`) et Éventail (`fan`) sont retirés : un joueur qui les avait choisis retombe sur la
+ * Déchirure (`setOpeningChoice`), sans migration.
  */
-export type OpenStyle = 'burn' | 'tear' | 'fan' | 'retrousse';
+export type OpenStyle = 'tear' | 'retrousse';
+/** style de la scène : une ouverture, ou `idle` (vitrine : sachet posé, aucune maille de déchirure montrée) */
+type SceneStyle = OpenStyle | 'idle';
 /**
- * (retours 07/11) une seule ouverture par défaut pour tous les boosters : la DÉCHIRURE. (11/11, sondage) « Brûler »
- * (ex-Gaming) et « éventail » (ex-World Pack) se GAGNENT par un succès (src/core/cosmetics.ts, OPENINGS) ; le joueur
- * choisit dans la fiche d'un booster et son choix vaut pour tous les boosters (`setOpeningChoice`, posé par la boutique
- * depuis `users.me`). L'ambiance Éclipse, le god pack et les Merveilles du World Pack se jouent par-dessus, quel que
- * soit le style.
+ * (retours 07/11) une seule ouverture par défaut pour tous les boosters : la DÉCHIRURE ; les autres se GAGNENT par un
+ * succès (src/core/cosmetics.ts, OPENINGS) ; le joueur choisit dans la fiche d'un booster et son choix vaut pour tous
+ * les boosters (`setOpeningChoice`, posé par la boutique depuis `users.me`). L'ambiance Éclipse, le god pack et les
+ * Merveilles du World Pack se jouent par-dessus, quel que soit le style.
  */
 export function openStyleOf(p: Pick<SealedPack, 'packKind' | 'themeId' | 'eventId'> & { cards?: unknown[] }): OpenStyle {
   // (27/11, Retroussé) style FIGÉ par ouverture : la boutique le lit (indice, coach) puis open() le relit — même
   // réponse pour le même booster, même si la cuisson du Retroussé arrive entre les deux (open() relâche le gel)
   if (frozenStyle && frozenStyle.p === p) return frozenStyle.style;
   // (11/11) le booster du moment (événement limité) suit aussi le choix du joueur
-  // l'éventail tient 10 cartes au plus (×5 / ×10 = gros booster de 25 / 50) : au-delà, la déchirure
   let style = chosenStyle;
-  if (chosenStyle === 'fan' && (p.cards?.length ?? 5) > FAN_MAX) style = 'tear';
   // Retroussé : seulement si son lecteur est monté ET précompilé ; sinon la Déchirure (indice compris)
-  else if (chosenStyle === 'retrousse' && !rollReady) style = 'tear';
+  if (chosenStyle === 'retrousse' && !rollReady) style = 'tear';
   frozenStyle = { p, style };
   return style;
 }
-/** cartes au plus dans l'éventail (fanLayout : au-delà, elles deviennent trop petites) */
-const FAN_MAX = 10;
 let chosenStyle: OpenStyle = 'tear';
 /** (27/11) dernier style rendu par openStyleOf, pour ce booster-là (relâché par open()) */
 let frozenStyle: { p: object; style: OpenStyle } | null = null;
@@ -157,10 +154,13 @@ let frozenStyle: { p: object; style: OpenStyle } | null = null;
 let rollReady = false;
 /** (27/11) la scène suit le choix (chargement de la famille de cuissons, montage hors ouverture) */
 let choiceHook: ((s: OpenStyle) => void) | null = null;
-/** Animation d'ouverture choisie par le joueur (déjà vérifiée débloquée par le serveur) ; inconnue → la déchirure. */
+/**
+ * Animation d'ouverture choisie par le joueur (déjà vérifiée débloquée par le serveur) ; inconnue → la déchirure.
+ * (27/11) Brûlure et Éventail retirés : `burn` / `fan` encore rangés chez un joueur retombent ici sur la déchirure.
+ */
 export function setOpeningChoice(id: string | undefined) {
   const before = chosenStyle;
-  chosenStyle = id === 'burn' || id === 'fan' || id === 'retrousse' ? id : 'tear';
+  chosenStyle = id === 'retrousse' ? id : 'tear';
   chosenSkin = id === 'glace' || id === 'etoile' ? id : '';
   if (chosenStyle !== before) {
     frozenStyle = null;
@@ -274,7 +274,7 @@ export interface OpeningScene extends Experiment {
   onFanMove: ((rects: Array<{ card: PackCard; x: number; y: number; w: number; h: number }>) => void) | null;
   /**
    * Pilotage automatique (ouvertures ×5 / ×10, « passer jusqu'aux 4★ ») :
-   * - `burn` : l'emballage se brûle tout seul, sans maintenir ;
+   * - `burn` : l'emballage s'ouvre tout seul (déchirure ou retroussé automatique) ;
    * - `minRank` : les cartes de rang inférieur se retournent et filent dans la rangée en accéléré, sans toucher ;
    *   la scène s'arrête (attend un toucher) sur chaque carte de rang ≥ minRank. 0 = désactivé.
    * - `reveal` (« Tout révéler ») : toutes les cartes se retournent toutes seules, à vitesse normale pour celles de
@@ -440,8 +440,6 @@ const ECL = { ember: '#e0301a', aura: '#9c0c0c', horizon: 0.6, moonY: 0.26, dark
 const HINGE = 1;
 /** part de la perspective réellement visible quand la carte se soulève (1 = taille apparente constante, ancien comportement) */
 const HINGE_PERSP = 0.55;
-/** Mythique (éventail) : court temps de plein écran entre l'apparition de la face et l'explosion. */
-const MYTHIC_BEAT = CALM ? 0.5 : 0.9;
 /** or des tranches face cachée des 5★, 6★ et secrètes (le même : « au moins une 5★ », sans trahir le palier) */
 const TEASE_GOLD = '#e0a63a';
 /** Fraction de la durée d'une courbe d'animation où elle passe à mi-chemin (retournement : la face devient visible). */
@@ -526,7 +524,6 @@ export function createOpeningScene(): OpeningScene {
   const side = new Set<gsap.core.Timeline>();
   let spinTl: gsap.core.Timeline | null = null;
   let holding = false;
-  let hold = 0;
   /** pilotage automatique (voir setAuto) */
   const auto = { burn: false, minRank: 0, reveal: false, jump: false };
   /** carte (curseur) dont le prélude 6★ vient d'être joué : sa révélation ne redemande pas de cinématique */
@@ -606,11 +603,8 @@ export function createOpeningScene(): OpeningScene {
    * façon pour toutes les raretés (vitesse, réponse au toucher) ; `curTier` ne prend la vraie valeur qu'à ce moment.
    */
   let revealed = false;
-  /** instant (dans la timeline de la carte) où sa face devient visible */
-  let curFace = 0;
-  /** « 4★ et + » sur un World Pack : une belle carte vient d'être montrée, la scène attend un toucher avant la suivante */
+  /** « 4★ et + » : une belle carte vient d'être montrée, la scène attend un toucher avant la suivante */
   let autoWait = false;
-  let rumbleAt = 0;
   /** 003 — temps écoulé depuis que le booster tiré est posé (lueur NEUTRE, identique pour tous : retours live 02) */
   let sealedT = -1;
   let boosterKey: string = THEMES[0].id;
@@ -707,8 +701,7 @@ export function createOpeningScene(): OpeningScene {
   let glowRef: Mesh | null = null;
   /** lambeaux : matrices à remettre à zéro une dernière fois */
   let shredsDirty = true;
-  /** dernière impulsion haptique de la brûlure (s) / progression de la déchirure à la dernière impulsion */
-  let hapticAt = 0;
+  /** progression de la déchirure à la dernière impulsion haptique */
   let hapticTear = 0;
   /** vitrine au repos sur téléphone : une image sur deux (audit PERF1-07) */
   let calmSkip = 0;
@@ -757,7 +750,7 @@ export function createOpeningScene(): OpeningScene {
   const focusKey = { x: NaN, y: NaN, w: 0, h: 0 };
 
   // ── déchirure (Bebou Pack, World Pack)
-  let style: OpenStyle = 'burn';
+  let style: SceneStyle = 'idle';
   let packMeshMain: Mesh | null = null;
   let tearBody: Mesh | null = null;
   let tearStrip: Mesh | null = null;
@@ -859,11 +852,8 @@ export function createOpeningScene(): OpeningScene {
   let rollWarm = false;
   /** libère les familles de cuissons quittées (posée au montage ; ne fait rien pendant une ouverture) */
   let releaseFamilies = () => {};
-  /** position de la pile dans le booster qu'elle suit (burn : 12 cm derrière ; déchirure : DEDANS) */
+  /** position de la pile dans le booster qu'elle suit (vitrine : 12 cm derrière ; ouverture : DEDANS) */
   let followZ = -PACK_OPEN_Z;
-  /** éventail : la carte en cours de retournement (centre des effets plein écran) */
-  let focusSlot = -1;
-  let fanFlip = false;
   const yTear = (TEAR_V - 0.5) * PACK.h;
   const NSH = 110;
   const sh = Array.from({ length: NSH }, () => ({ p: new Vector3(), v: new Vector3(), r: new Vector3(), w: new Vector3(), life: 0, s: 1 }));
@@ -1082,7 +1072,7 @@ export function createOpeningScene(): OpeningScene {
           // booster ouvert avant que son visuel ne soit prêt : on le pose dès qu'il l'est
           boosterKey = k;
           applyBoosterArt(k);
-          if (style !== 'burn') applyTearArt(k);
+          if (style !== 'idle') applyTearArt(k);
         }
       }
     } finally {
@@ -1486,7 +1476,7 @@ export function createOpeningScene(): OpeningScene {
     if (typeof document !== 'undefined') document.documentElement.classList.toggle('op-roll', on);
   }
 
-  /** Booster déchiré : la bande s'envole, la pile sort par le haut, le booster tombe ; puis pile (Bebou) ou éventail (World). */
+  /** Booster déchiré : la bande s'envole, la pile sort par le haut, le booster tombe ; puis la pile se pose. */
   function onTorn() {
     phase = 'busy';
     holding = false;
@@ -1498,8 +1488,6 @@ export function createOpeningScene(): OpeningScene {
     void (prepared ?? Promise.resolve()).then(() => {
       if (!pack) return;
       kill();
-      const fan = style === 'fan';
-      const sp = fan ? 0.62 : 1;
       const n = order.length;
       tl = gsap.timeline();
       // sortie du booster vide sur une timeline à part : un toucher (révélation suivante, défilement auto des séries)
@@ -1511,32 +1499,29 @@ export function createOpeningScene(): OpeningScene {
         const T = (bakePlayer.header.nExit - 1) / bakePlayer.header.exitFps;
         out.fromTo(bakeExit, { t: 0 }, { t: T, duration: T, ease: 'none' }, 0);
       }
-      out.to(fly, { t: 1, duration: 0.75 * sp, ease: EASE.glide, onStart: () => air(out, 0.75 * sp, 0.22, EASE.glide) }, 0)
-        .to(B, { follow: 0, duration: 0.3 * sp, ease: EASE.glide }, 0.75 * sp)
-        .to(B, { z: -0.6, duration: 0.6 * sp, ease: EASE.glide }, 1.3 * sp)
-        .to(B, { y: -2.6, duration: 0.85 * sp, ease: EASE.heave }, 1.05 * sp);
+      out.to(fly, { t: 1, duration: 0.75, ease: EASE.glide, onStart: () => air(out, 0.75, 0.22, EASE.glide) }, 0)
+        .to(B, { follow: 0, duration: 0.3, ease: EASE.glide }, 0.75)
+        .to(B, { z: -0.6, duration: 0.6, ease: EASE.glide }, 1.3)
+        .to(B, { y: -2.6, duration: 0.85, ease: EASE.heave }, 1.05);
       // la pile glisse hors du booster, la carte de devant un rien en premier
       order.forEach((si, k) => {
         // (07/11) booster +15 % : la pile monte d'autant plus haut pour sortir entièrement par la déchirure
-        tl!.to(slots[si].p, { y: PACK.h / PACK_FRAME.h, duration: 0.8 * sp, ease: EASE.glide, onStart: k === n - 1 ? () => air(tl, 0.8 * sp, 0.14, EASE.glide) : undefined }, (0.25 + (n - 1 - k) * 0.035) * sp);
+        tl!.to(slots[si].p, { y: PACK.h / PACK_FRAME.h, duration: 0.8, ease: EASE.glide, onStart: k === n - 1 ? () => air(tl, 0.8, 0.14, EASE.glide) : undefined }, 0.25 + (n - 1 - k) * 0.035);
       });
-      tl.to(S, { push: 0, duration: 0.8, ease: EASE.glide }, 0.9 * sp);
+      tl.to(S, { push: 0, duration: 0.8, ease: EASE.glide }, 0.9);
       // (audit UX2-04) mode auto rapide : toute la sortie du booster ×1,6 (les trois timelines ensemble, rien ne se croise)
       const qk = autoQuick() ? 1.6 : 1;
-      if (fan) dealFan(tl, 1.0 * sp, qk);
-      else {
-        tl.call(() => {
-          const c = sideline(gsap.timeline());
-          order.forEach((si, k) => c.to(slots[si].p, { y: 0, z: -STACK_DZ * (n - 1 - k), s: 1, rz: (k - 2) * 0.012, duration: 0.65, ease: EASE.settle }, k * 0.03));
-          c.timeScale(qk);
-        }, [], 1.2);
-        tl.call(() => {
-          phase = 'opened';
-          events.onOpened?.();
-          flushQueued();
-        }, [], 1.5);
-        lightRim(sideline(gsap.timeline()), order[0], 1.45 / qk);
-      }
+      tl.call(() => {
+        const c = sideline(gsap.timeline());
+        order.forEach((si, k) => c.to(slots[si].p, { y: 0, z: -STACK_DZ * (n - 1 - k), s: 1, rz: (k - 2) * 0.012, duration: 0.65, ease: EASE.settle }, k * 0.03));
+        c.timeScale(qk);
+      }, [], 1.2);
+      tl.call(() => {
+        phase = 'opened';
+        events.onOpened?.();
+        flushQueued();
+      }, [], 1.5);
+      lightRim(sideline(gsap.timeline()), order[0], 1.45 / qk);
       tl.timeScale(qk);
       out.timeScale(qk);
     });
@@ -1663,18 +1648,14 @@ export function createOpeningScene(): OpeningScene {
     // TEASING (retours live 02, §12 — remplace l'anti-spoil) : face cachée, la tranche de chaque carte luit déjà doucement
     // dans la couleur de sa rareté (1★ gris · 2★ vert · 3★ bleu · 4★ rouge · 5★ doré · 6★ arc-en-ciel), un peu plus
     // fort à mesure que la rareté monte ; la révélation fait ensuite son éclat habituel
-    // … mais pas tout de suite : la tranche S'ALLUME quand la carte arrive devant (pile) ou une à une dans l'éventail
+    // … mais pas tout de suite : la tranche S'ALLUME quand la carte arrive devant
     // (réf. motion §1.1 : l'indice le plus précoce porte le signal, son allumage est un temps de mise en scène)
     for (const sl of slots) sl.U.rim.value = 0;
     // révélation de la moins rare à la plus rare (la secrète est toujours la dernière)
     order = slots.map((_, i) => i).sort((a, b) => RANK[slots[a].data.rarity] - RANK[slots[b].data.rarity] || a - b);
-    order.forEach((si, k) => {
-      const s = slots[si];
-      if (style === 'burn') Object.assign(s.p, { x: 0, y: 0, z: -0.03 - (order.length - 1 - k) * STACK_DZ, s: 0.97, flip: Math.PI, rz: (k - 2) * 0.012, holo: 0 });
-      // DANS le booster : pile serrée (≈ l'épaisseur des cartes) centrée dans le coussin, un peu plus petite que lui,
-      // sans rotation (coins loin des soudures) → aucune carte ne traverse l'emballage, même en l'inclinant
-      else Object.assign(s.p, { x: 0, y: PACK_STACK.cy, z: (k - (order.length - 1) / 2) * 0.0072, s: PACK_STACK.s, flip: Math.PI, rz: 0, holo: 0 });
-    });
+    // DANS le booster : pile serrée (≈ l'épaisseur des cartes) centrée dans le coussin, un peu plus petite que lui,
+    // sans rotation (coins loin des soudures) → aucune carte ne traverse l'emballage, même en l'inclinant
+    order.forEach((si, k) => Object.assign(slots[si].p, { x: 0, y: PACK_STACK.cy, z: (k - (order.length - 1) / 2) * 0.0072, s: PACK_STACK.s, flip: Math.PI, rz: 0, holo: 0 }));
     // (audit 12/11, S09 / E4-02) UNE carte par image dans la scène : three construit les nœuds d'un objet (≈ 470 pour une
     // face) dans la première image où il est soumis ; ajoutées ensemble, les 5 constructions tombaient dans la même
     // image, à chaque booster (la pile est cachée par le sachet, mais soumise au rendu)
@@ -1822,7 +1803,6 @@ export function createOpeningScene(): OpeningScene {
     queued = false;
     curBase = 1;
     autoHoldUntil = 0;
-    hold = 0;
     holding = false;
     const k = packKeyOf(p);
     // (son V2) couleur sonore du booster ; la nappe des menus (si allumée) se tait pendant l'ouverture
@@ -1837,22 +1817,20 @@ export function createOpeningScene(): OpeningScene {
     // (27/11) Retroussé sans lecteur prêt (cuisson libérée entre-temps) : la Déchirure, sans écran vide
     if (style === 'retrousse' && !(rollPlayer && rollBody && rollReady)) style = 'tear';
     rolling = style === 'retrousse';
-    const tearing = style !== 'burn';
-    followZ = tearing ? 0 : -PACK_OPEN_Z;
+    // la pile est DANS le booster (au plan des cartes) ; en vitrine, elle se tient 12 cm derrière (reset)
+    followZ = 0;
     tearTarget = tearProgress = tearPrevTarget = tearVel = tearWeld = 0;
     tearSlip = tearFling = false;
     TSLIT.value = 0;
     hapticTear = 0;
     TP.value = 0;
     fly.t = 0;
-    focusSlot = -1;
-    fanFlip = false;
     autoTear?.kill();
     autoTear = null;
-    if (tearing) applyTearArt(k);
+    applyTearArt(k);
     // une des variantes enregistrées, au hasard (chaque booster se déchire un peu différemment)
     const bakes = loadedBakes();
-    useBake = tearing && !rolling && !warmingTear && !!bakePlayer && bakes.length > 0;
+    useBake = !rolling && !warmingTear && !!bakePlayer && bakes.length > 0;
     if (useBake) bakePlayer!.use(bakes[Math.floor(Math.random() * bakes.length)]);
     bakePlay = 0;
     bakeExit.t = -1;
@@ -1883,8 +1861,8 @@ export function createOpeningScene(): OpeningScene {
         rollGate = f / Math.max(1, h.nTear - 1);
       }
     }
-    if (packMeshMain) packMeshMain.visible = !tearing;
-    setTearVisible(tearing);
+    if (packMeshMain) packMeshMain.visible = false;
+    setTearVisible(true);
     setRollLock(rolling && !o.continued);
     // (retours live 02, anti-spoil) braise et fuite de lumière : une seule couleur pour tous les boosters (avant : la
     // couleur de la meilleure carte, qui annonçait une rouge ou une 6★ dès que le booster était posé)
@@ -1932,36 +1910,10 @@ export function createOpeningScene(): OpeningScene {
     // déchirure : le booster reste au plan des cartes (z 0) → quand la pile le quitte (follow → 0) elle ne recule pas à travers lui
     // (07/11) booster +15 % : en vitrine il paraît plus grand ; à l'ouverture il reprend la taille d'écran d'avant
     // (la place entre l'en-tête et les consignes n'a pas changé) — les cartes dedans suivent son échelle (cardsRig)
-    tl.to(B, { z: style === 'burn' ? PACK_OPEN_Z : 0, y: 0, spin: Math.abs(B.spin) > Math.PI ? Math.sign(B.spin) * Math.PI * 2 : 0, s: OPEN_S, duration: 0.6, ease: EASE.glide });
+    tl.to(B, { z: 0, y: 0, spin: Math.abs(B.spin) > Math.PI ? Math.sign(B.spin) * Math.PI * 2 : 0, s: OPEN_S, duration: 0.6, ease: EASE.glide });
     tl.to(S, { push: 0.08, duration: 0.6, ease: EASE.glide }, 0);
   }
 
-  /** Fin de la brûlure : la pile monte au centre. */
-  function onBurnt() {
-    phase = 'busy';
-    holding = false;
-    ctx.sfx.whoosh(0.6, 0.18, true);
-    shake.impulse(8);
-    haptics.pulse(28);
-    void (prepared ?? Promise.resolve()).then(() => {
-      if (!pack) return;
-      kill();
-      tl = gsap.timeline();
-      tl.to(B, { burn: 1.2, duration: 0.25 })
-        .to(B, { follow: 0, duration: 0.6, ease: EASE.glide }, 0)
-        .to(S, { push: 0, duration: 0.8, ease: EASE.glide }, 0)
-        .call(() => {
-          phase = 'opened';
-          events.onOpened?.();
-          flushQueued();
-        }, [], 0.25);
-      order.forEach((si, k) => {
-        const s = slots[si];
-        tl!.to(s.p, { z: -STACK_DZ * (order.length - 1 - k), s: 1, duration: 0.7, ease: EASE.glide }, 0.05);
-      });
-      lightRim(sideline(gsap.timeline()), order[0], 0.45);
-    });
-  }
 
   /** Une étoile par « tick », puis récompense. */
   function ignite(s: Slot, at: number) {
@@ -2086,7 +2038,6 @@ export function createOpeningScene(): OpeningScene {
     const speed = fastSpeed(si);
     curBase = speed;
     curPay = pay;
-    curFace = face;
     // 3. la face apparaît
     main.call(() => {
       revealed = true;
@@ -2302,45 +2253,6 @@ export function createOpeningScene(): OpeningScene {
   }
 
   /**
-   * (13/11, retours de Tom) « Direct 4★ » pour l'ÉVENTAIL (World Pack) aussi : avant, il gardait le défilement carte par
-   * carte. Toutes les cartes sous le seuil, de la carte en attente jusqu'à la première belle carte, se retournent
-   * ENSEMBLE à leur place dans l'éventail (cascade serrée) ; la belle carte suit avec sa révélation habituelle (pilotage
-   * auto). Aucune carte de rang ≥ seuil : l'éventail final, tout de suite.
-   */
-  function jumpFan() {
-    let k = cursor;
-    while (k < order.length && fastCard(order[k])) k++;
-    phase = 'busy';
-    queued = false;
-    kill();
-    if (k >= order.length) {
-      for (const si of order) slots[si].U.lit.value = 6;
-      finish(0);
-      return;
-    }
-    const lays = fanLayout();
-    const move = sideline(gsap.timeline());
-    const dE = DUR.emphatique() / 1000, dS = DUR.standard() / 1000, st = STAGGER.serre / 1000;
-    move.call(() => ctx.sfx.whoosh(dE, 0.06, false, EASE.glide), [], 0);
-    // la carte montrée avant (s'il y en a une) reprend sa place dans l'éventail
-    const from = cursor > 0 ? cursor - 1 : cursor;
-    for (let j = from; j < k; j++) {
-      const sl = slots[order[j]];
-      const l = lays[j];
-      sl.U.lit.value = 6;
-      move.to(sl.p, { x: l.x, y: l.y, z: l.z, s: l.s, rz: l.rz, flip: 0, holo: 1, duration: dE, ease: EASE.glide }, Math.max(0, j - cursor) * st);
-    }
-    move.to(S, { glow: 0, duration: dS }, 0);
-    cursor = k;
-    focusSlot = -1;
-    events.onJump?.(cursor, order.length);
-    move.call(() => {
-      phase = 'opened';
-      flushQueued();
-    }, [], dE + Math.max(0, k - from - 1) * st);
-  }
-
-  /**
    * Place de la j-ième carte déjà révélée (style pile). (Retours live 02) Quand l'interface occupe le bas de l'écran
    * (téléphone en portrait, ordinateur), la rangée passe EN HAUT, juste sous le compteur : avant, elle était collée au bas
    * de l'écran, sous les boutons « 4★ et + / Tout révéler / Tout passer ». La carte montrée passe devant elle.
@@ -2359,230 +2271,6 @@ export function createOpeningScene(): OpeningScene {
     const gap = Math.min(0.36, (2 * halfW * 0.92 - CARD_W * rs) / 3);
     const rowY = -halfH + (CARD_H * rs) / 2 + 0.06;
     return { x: (j - 1.5) * gap, y: rowY, z: 0.02 + j * 0.008, s: rs, rz: (j - 1.5) * -0.05 };
-  }
-
-  /**
-   * Places de l'éventail du World Pack : dans l'espace libre entre le compteur et le panneau du bas (fiche de la carte,
-   * indication, barre de boutons) — aucune carte sous l'interface, même soulevée pendant son retournement (×1,14).
-   */
-  function fanLayout() {
-    const { halfH, halfW } = view();
-    const portrait = halfW < halfH;
-    let top = halfH * (portrait ? 0.76 : 0.84), bottom = -halfH + 2 * halfH * (portrait ? 0.32 : 0.36);
-    if (bottomPanel()) {
-      top = Math.min(top, yOfPx(insets.top + 4));
-      bottom = Math.max(bottom, yOfPx(ctx.height - insets.bottom - 4));
-    }
-    const n = order.length;
-    const wk = portrait ? 0.92 : 0.9;
-    // (marge : les cartes du bord descendent en arc, s'inclinent, et la carte retournée grossit de 14 %)
-    const sc = Math.min(0.6, ((top - bottom - 0.08) * 0.86) / CARD_H, (2 * halfW * wk) / (CARD_W * (1 + (n - 1) * 0.62)));
-    const gap = Math.min(0.42, (2 * halfW * wk - CARD_W * sc * 1.08) / Math.max(1, n - 1));
-    const cy = (top + bottom) / 2 + 0.03;
-    return order.map((_, k) => {
-      const c = k - (n - 1) / 2;
-      return { x: c * gap, y: cy - c * c * 0.02, z: 0.01 * k, s: sc, rz: -c * 0.07 };
-    });
-  }
-
-  /** World Pack : les cartes sortent du booster et s'ouvrent en éventail, faces cachées. */
-  function dealFan(t: gsap.core.Timeline, at: number, speed = 1) {
-    // timeline à part : le défilement auto (×10, « 4★ et + ») et les touchers coupent la timeline principale, ce qui
-    // figeait les dernières cartes en plein vol (en haut de l'écran, coupées). Le retournement n'est permis qu'une fois
-    // toutes les cartes posées.
-    t.call(() => {
-      const lay = fanLayout();
-      const d = sideline(gsap.timeline());
-      order.forEach((si, k) => {
-        d.to(slots[si].p, { ...lay[k], duration: 0.5, ease: EASE.settle, onStart: () => air(d, 0.5, 0.07, EASE.settle, false) }, k * 0.06);
-      });
-      // allumage des tranches, de gauche à droite, la 5e (emplacement garanti) en dernier avec un retard de plus
-      const t0 = (order.length - 1) * 0.06 + 0.3;
-      order.forEach((si, k) => lightRim(d, si, t0 + k * TEASE_STAGGER + (k === order.length - 1 ? TEASE_LAST_EXTRA : 0)));
-      d.call(() => {
-        if (phase !== 'busy' || style !== 'fan' || cursor !== 0) return;
-        phase = 'opened';
-        events.onOpened?.();
-        flushQueued();
-      }, [], (order.length - 1) * 0.06 + 0.42);
-      d.timeScale(speed);
-    }, [], at);
-  }
-
-  /**
-   * World Pack : retourne la carte suivante de l'éventail (rapide ; un toucher pendant le retournement le termine).
-   * (Retours live 02, anti-spoil) même élan et même retournement pour toutes ; la mythique ne quitte l'éventail pour le
-   * plein écran qu'une fois sa face visible.
-   */
-  function revealFan() {
-    const si = order[cursor];
-    const s = slots[si];
-    const last = cursor === order.length - 1;
-    autoWait = false;
-    if (last && s.rr.secret) {
-      phase = 'busy';
-      events.onSecret?.(s.data);
-      return;
-    }
-    if (wildPokemon(s) && events.onPokemon) {
-      if (cursor > 0) (last ? events.onLast : events.onNext)?.();
-      phase = 'scene';
-      queued = false;
-      events.onPokemon(s.data);
-      return;
-    }
-    if (cursor > 0) (last ? events.onLast : events.onNext)?.();
-    phase = 'busy';
-    fanFlip = true;
-    const rr = s.rr;
-    const T = rr.tier;
-    const mythic = T >= 5;
-    curTier = 0;
-    revealed = false;
-    focusSlot = si;
-    // (retours 06/11) au déballage, du son SEULEMENT pour la dernière carte — sauf une 5★ / 6★ avant elle
-    const sfx = quietCard(rr.rank, last) ? MUTE_SFX : ctx.sfx;
-    kill();
-    const lay0 = fanLayout()[cursor];
-    // mythique : la carte quitte l'éventail pour le centre de l'écran, en grand (plein écran) — après l'apparition
-    const layM = { x: 0, y: 0.02, z: 0.3, s: Math.min(1.05, lay0.s * 1.9), rz: 0 };
-    const lay = mythic ? layM : lay0;
-    const main = (tl = gsap.timeline());
-    // la carte précédente reprend sa place dans l'éventail
-    if (cursor > 0) {
-      const pv = slots[order[cursor - 1]];
-      const pl = fanLayout()[cursor - 1];
-      main.to(pv.p, { x: pl.x, y: pl.y, z: pl.z, s: pl.s, rz: pl.rz, duration: 0.3, ease: EASE.glide }, 0);
-    }
-    // éventail = style rapide : anticipation réduite de moitié par rapport à la pile (réf. motion §7), même partition
-    const beat = TIER_BEAT[Math.min(5, T)];
-    const cond = condensed(si) && !mythic ? beat.condensed : null;
-    const preT = Math.max(0.12, (CALM ? 0.3 : 1) * (cond ? cond.pre : beat.pre) * 0.5);
-    const flipD = cond ? cond.flip : beat.flip;
-    main.to(S, { glow: 0, trem: 0, duration: 0.12 }, 0);
-    main.to(s.p, { x: lay0.x, y: lay0.y, z: lay0.z + 0.14, s: lay0.s * 1.14, rz: lay0.rz * 0.3, duration: Math.min(preT, 0.3), ease: EASE.breathe, onStart: () => sfx.tick(0.9, 0.12) }, 0);
-    if (preT > 0.2) {
-      const rim0 = TEASE[Math.min(6, rr.rank)];
-      if (rim0 > 0) main.to(s.U.rim, { value: rim0 * 2.4, duration: preT * 0.5, ease: 'power2.in', yoyo: true, repeat: 1 }, 0);
-      if (T >= 3 && !cond) main.call(() => sfx.riser(preT * 0.9, T, 0.08 + T * 0.03), [], 0.02);
-      if (beat.dark > 0) main.to(S, { dark: beat.dark * 0.6, duration: preT * 0.5, ease: EASE.glide }, 0);
-      if (mythic) {
-        const turn = preT * MYTHIC_TURN;
-        main.to(s.U.tease, { value: 1, duration: 0.35, ease: 'power3.in' }, turn);
-        main.call(() => { sfx.crack(0.3); haptics.pulse([40, 80, 40]); }, [], turn);
-        if (!CALM) main.call(() => sfx.duck(MYTHIC_SILENCE), [], Math.max(turn + 0.1, preT - MYTHIC_SILENCE));
-      }
-    }
-    const flipEase = T >= 4 ? EASE.settle : EASE.snap;
-    main.to(s.p, { flip: 0, duration: flipD, ease: flipEase, onStart: () => air(main, flipD, 0.18, flipEase, true, sfx) }, preT);
-    const face = preT + flipD * halfAt(flipEase);
-    const pay = mythic ? face + MYTHIC_BEAT * 0.93 : face;
-    const speed = fastSpeed(si);
-    const pre = preSpeed();
-    curBase = pre;
-    curPay = pay;
-    curFace = face;
-    main.call(() => {
-      revealed = true;
-      curTier = T;
-      curBase = speed;
-      if (T >= 2) queued = false;
-      U.glowColor.value.set(T === 0 ? NEUTRAL_EMBER : rr.hex);
-      U.colA.value.set(rr.hex);
-      U.colB.value.set(rr.accentHex);
-      if (pre !== speed && T < 4) main.timeScale(speed);
-      if (mythic) events.onMythic?.(s.data);
-    }, [], face);
-    if (mythic) {
-      main.to(s.p, { ...layM, z: layM.z + 0.14, s: layM.s * 1.14, duration: 0.7, ease: EASE.glide }, face)
-        .to(S, { dark: 0.72, glow: 0.12, duration: 0.4, ease: EASE.glide }, face)
-        .to(s.U.rim, { value: 2.2, duration: pay - face, ease: 'power2.in' }, face)
-        .to(S, { trem: 0.4, duration: pay - face, ease: 'power3.in' }, face + 0.1);
-      main.call(() => {
-        sfx.heartbeat(0.5, 40);
-        haptics.pulse(30);
-      }, [], face);
-      main.call(() => sfx.rumble(pay - face, 0.35), [], face + 0.05);
-      main.call(() => sfx.riser((pay - face) * 0.9, 5, 0.22), [], face + 0.05);
-    }
-    main.call(() => sfx.ahead(SND_LEAD / Math.max(0.2, main.timeScale()), () => {
-      if (mythic) {
-        sfx.transpose = 2;
-        sfx.event(4.5);
-        sfx.prismatic(0.09);
-      } else if (T >= 4) sfx.event(2);
-      sfx.thump(0.25 + T * 0.08);
-      sfx.chime(Math.max(1, T), 0.1 + T * 0.03);
-      if (T >= 4) sfx.shimmer(T, 2.4, 0.1);
-      if (T >= 5) sfx.choir(4, 0.1);
-    }), [], Math.max(0, pay - SND_LEAD));
-    main.call(() => {
-      if (beat.shake > 0 && !CALM) shake.impulse(3 + beat.shake * 4);
-      if (T >= 2) {
-        U.origin.value.set(s.p.x, s.p.y, s.p.z + 0.1);
-        U.count.value = Math.round(Math.min(rr.particles * (mythic ? 0.3 : 0.14), (ctx.quality === 'mobile' ? 900 : 1800) * (mythic ? 1.6 : 1)) * fxk('parts'));
-        S.bt = 0;
-      }
-      haptics.pulse(beat.haptic);
-      events.onCard?.(cursor, s.data, order.length);
-      eclipseRipple();
-    }, [], pay);
-    if (mythic) main.to(s.U.rim, { value: 0, duration: 0.5 }, pay);
-    else if (T >= 2) main.fromTo(s.U.rim, { value: 0.6 + T * 0.35 }, { value: 0, duration: 0.8, ease: EASE.glide, immediateRender: false }, pay);
-    main.to(S, { flash: (0.3 + T * 0.14) * (CALM ? 0.4 : 1), ca: T >= 5 && !CALM ? 0.2 : 0, glow: T >= 2 ? 0.6 + T * 0.2 : 0.1, trem: 0, duration: 0.05 }, pay)
-      .to(S, { flash: 0, ca: 0, dark: mythic ? 0.5 : 0, duration: 1.0, ease: EASE.glide }, pay + 0.08)
-      .to(S, { glow: 0, duration: 1.6, ease: EASE.glide }, pay + 0.1)
-      .to(S, { bt: 6, duration: 6, ease: 'none' }, pay)
-      .to(s.U.flash, { value: 1, duration: 0.05 }, pay)
-      .to(s.U.flash, { value: 0, duration: 1.1, ease: EASE.glide }, pay + 0.05)
-      .to(s.p, { x: lay.x, y: lay.y, z: lay.z + 0.05, s: lay.s * 1.06, rz: lay.rz, duration: 0.45, ease: EASE.settle }, pay + 0.05)
-      .to(s.p, { holo: 1, duration: 1.1, ease: EASE.glide }, pay + 0.1);
-    if (T >= 4) {
-      main.to(S, { flare: T >= 5 ? 0.8 : 0.42, duration: 0.05, ease: 'none' }, pay)
-        .to(S, { flare: 0, duration: 1.4, ease: EASE.glide }, pay + 0.1)
-        .fromTo(S, { shock: 0 }, { shock: 1, duration: T >= 5 ? 1.2 : 0.9, ease: 'power2.out', immediateRender: false }, pay);
-      if (T >= 5 && !CALM) main.to(S, { invert: 1, duration: 0.03 }, pay).to(S, { invert: 0, duration: 0.2, ease: 'power2.out' }, pay + 0.08);
-      main.call(() => void gsap.to(main, { timeScale: (rr.slowmo + 0.25) * curBase, duration: 0.12 }), [], pay);
-      main.call(() => void gsap.to(main, { timeScale: curBase, duration: 0.7, ease: 'power2.in' }), [], pay + 0.25);
-    }
-    if (mythic && !CALM) {
-      const hue = { h: 0 };
-      main.to(hue, { h: 1, duration: 2.6, ease: 'none', onUpdate: () => {
-        U.colA.value.setHSL(hue.h % 1, 0.85, 0.62);
-        U.colB.value.setHSL((hue.h + 0.33) % 1, 0.85, 0.75);
-      } }, pay);
-    }
-    // étoiles en rafale (plus serrées qu'en mode pile) ; mythique : une à une, avec leurs carillons (ignite)
-    const n = Math.min(6, rr.rank + 1);
-    let starsEnd = pay + 0.05 + n * 0.06;
-    if (mythic) starsEnd = ignite(s, pay + 0.5);
-    else for (let k = 0; k < n; k++) main.to(s.U.lit, { value: k + 1, duration: 0.08, ease: 'power2.out', onStart: () => sfx.tick(1 + k * 0.14, 0.05 + T * 0.012) }, pay + 0.05 + k * 0.06);
-    main.call(() => {
-      const fast = curBase > 1;
-      fanFlip = false;
-      s.U.lit.value = 6;
-      cursor++;
-      if (mythic) {
-        phase = last ? 'mythicHold' : 'opened';
-        autoHoldUntil = performance.now() + MYTHIC_ADMIRE_MS;
-        // « 4★ et + » : la scène attend un toucher avant la carte suivante (comme après toute belle carte)
-        if (!last && auto.minRank > 0 && !auto.reveal) autoWait = true;
-        events.onMythicShown?.(s.data, last);
-        return;
-      }
-      if (last) {
-        phase = 'busy';
-        finish(fast ? 0.3 : 0.9);
-      } else {
-        phase = 'opened';
-        // (retours 05/11) « Tout révéler » : temps de lecture, et une 5★ admirée un moment avant la suivante
-        if (auto.reveal) autoHoldUntil = performance.now() + (T >= 4 ? LEGEND_ADMIRE_MS : REVEAL_DWELL_MS);
-        // « 4★ et + » : arrêt APRÈS une belle carte (avant : la scène s'arrêtait face cachée devant elle — un indice)
-        if (auto.minRank > 0 && !auto.reveal && !fastCard(si)) autoWait = true;
-        flushQueued();
-      }
-    }, [], Math.max(starsEnd, pay + 0.3));
-    if (pre > 1) main.timeScale(pre);
   }
 
   /** Places de l'éventail final (dans l'ordre de révélation) — recalculées aussi à la rotation de l'écran (UX2-12). */
@@ -2655,25 +2343,12 @@ export function createOpeningScene(): OpeningScene {
       return;
     }
     if (phase === 'sealed') {
-      // déchirure : un toucher la fait toute seule (World Pack : d'un coup sec)
-      if (style !== 'burn') startAutoTear(rolling ? RETROUSSE.auto : style === 'fan' ? 0.42 : 1.05);
+      // un toucher l'ouvre tout seul (déchirure ou retroussé automatique)
+      startAutoTear(rolling ? RETROUSSE.auto : 1.05);
       return;
     }
-    if (phase === 'opened') {
-      if (style === 'fan') revealFan();
-      else revealCurrent();
-    } else if (phase === 'shown') nextCard(true);
-    // éventail : toucher pendant un retournement = on le termine et on passe à la suivante (sauf légendaire / mythique).
-    // (anti-spoil) face pas encore visible : la réponse est la même pour toutes — la face apparaît tout de suite ; une
-    // légendaire / mythique joue ensuite son effet en entier
-    else if (phase === 'busy' && fanFlip && tl && curTier < 4) {
-      const trueTier = slots[order[cursor]]?.rr.tier ?? 0;
-      if (!revealed && trueTier >= 4) tl.seek(curFace, false);
-      else {
-        tl.progress(1);
-        if ((phase as Phase) === 'opened') revealFan();
-      }
-    }
+    if (phase === 'opened') revealCurrent();
+    else if (phase === 'shown') nextCard(true);
     // (audit UX2-16) légendaire / mythique : le suspense reste sacré, mais un toucher APRÈS le payoff accélère la fin
     // (étoiles, flare) : ×1,6 pour une 5★, ×2,5 pour une 6★
     else if (phase === 'busy' && tl && curTier >= 4 && tl.time() > curPay) {
@@ -2690,7 +2365,7 @@ export function createOpeningScene(): OpeningScene {
     // (audit UX2-01) transition sans timeline principale (carte qui file dans la rangée), ou toucher de plus pendant une
     // commune déjà accélérée : le toucher est gardé et rejoué dès que la scène attend de nouveau (un toucher gardé avant
     // l'apparition d'une rare ou mieux est oublié à son apparition)
-    else if (phase === 'busy' && (!tl || (curTier < 2 && !fanFlip))) queued = true;
+    else if (phase === 'busy' && (!tl || curTier < 2)) queued = true;
   }
 
   function reset() {
@@ -2707,9 +2382,8 @@ export function createOpeningScene(): OpeningScene {
     Object.assign(S, { flash: 0, ca: 0, dark: 0, push: 0, glow: 0, trem: 0, bt: 99, flare: 0, shock: 0, invert: 0 });
     Object.assign(B, { y: -0.4, z: 0, spin: 0, s: 0.9, burn: -0.25, leak: 0, show: 1, follow: 0 });
     holding = false;
-    hold = 0;
     phase = 'display';
-    style = 'burn';
+    style = 'idle';
     rolling = false;
     queued = false;
     curBase = 1;
@@ -2724,8 +2398,6 @@ export function createOpeningScene(): OpeningScene {
     TSLIT.value = 0;
     TP.value = 0;
     fly.t = 0;
-    focusSlot = -1;
-    fanFlip = false;
     sh.forEach((q) => (q.life = 0));
     shredsDirty = true;
     if (packMeshMain) packMeshMain.visible = true;
@@ -2931,11 +2603,6 @@ export function createOpeningScene(): OpeningScene {
       if (last) {
         phase = 'busy';
         finish(0.05);
-      } else if (style === 'fan') {
-        // éventail : la carte reprend sa place, la suivante attend un toucher
-        Object.assign(s.p, fanLayout()[cursor]);
-        cursor++;
-        phase = 'opened';
       } else {
         const pose = payPose(1.06);
         Object.assign(s.p, { y: pose.y, s: 1.06 * pose.k });
@@ -3652,7 +3319,7 @@ export function createOpeningScene(): OpeningScene {
         // (lot 07) doigt levé en pleine déchirure : passé TEAR_FINISH la soudure cède d'un trait (plus de fin de course
         // qui patine au bord de l'écran) ; avant, la tension non relâchée retombe et le pli reste marqué à l'angle
         // atteint (la bande ne revient pas) — on peut reprendre où on s'est arrêté
-        if (tearX !== null && phase === 'sealed' && style !== 'burn') {
+        if (tearX !== null && phase === 'sealed') {
           if (tearProgress >= TEAR_FINISH) {
             tearFling = true;
             tearTarget = 1.08;
@@ -3662,7 +3329,7 @@ export function createOpeningScene(): OpeningScene {
         tearX = null;
       };
       const move = (e: PointerEvent) => {
-        if (tearX === null || phase !== 'sealed' || style === 'burn') return;
+        if (tearX === null || phase !== 'sealed') return;
         const dx = e.clientX - tearX;
         const dy = e.clientY - tearY;
         tearX = e.clientX;
@@ -3684,7 +3351,7 @@ export function createOpeningScene(): OpeningScene {
       // déchirure : le geste peut commencer sur un calque d'interface transparent posé sur la scène (indication,
       // compteur…) → on l'écoute aussi au niveau de la fenêtre, sauf sur un vrai contrôle
       const downAny = (e: PointerEvent) => {
-        if (style === 'burn' || phase !== 'sealed' || e.target === cv) return;
+        if (phase !== 'sealed' || e.target === cv) return;
         if ((e.target as HTMLElement | null)?.closest?.('button, a, input, select, textarea')) return;
         down(e);
       };
@@ -3757,33 +3424,11 @@ export function createOpeningScene(): OpeningScene {
       // pas de rotation au glisser dans cette scène : glisser en brûlant le booster (geste naturel au doigt) faisait
       // tourner la pile par demi-tours et montrait de dos… la face des cartes encore cachées. Inclinaison seule.
       ctx.input.spinEnabled = false;
-      // brûlure tenue au doigt : avance quand on maintient, recule doucement sinon
-      if (phase === 'sealed' && style === 'burn') {
-        const before = hold;
-        // (audit UX2-04) brûlure auto : ×1,4 en série manuelle, ×2,4 en « Tout révéler » / « 4★ et + »
-        hold = holding || auto.burn ? Math.min(1, hold + dt * (auto.burn ? (autoQuick() ? 2.4 : 1.4) : 0.62)) : Math.max(0, hold - dt * 0.3);
-        B.burn = -0.25 + hold * 1.2;
-        // (la fuite de lumière 003 est calculée plus bas, pour tous les styles : elle ne fait que monter en brûlant)
-        B.leak = Math.max(B.leak, hold * 0.55);
-        S.trem = hold * 0.35;
-        if (holding && t > rumbleAt) {
-          rumbleAt = t + 0.28;
-          ctx.sfx.rumble(0.35, 0.05 + hold * 0.12);
-          shake.impulse(1 + hold * 4);
-          // le doigt « sent » l'emballage céder — une impulsion toutes les 0,45 s au plus (audit UX2-14)
-          if (hold > 0.15 && t > hapticAt) {
-            hapticAt = t + 0.45;
-            haptics.pulse(6 + Math.round(hold * 10));
-          }
-        }
-        if (hold !== before) events.onHold?.(hold);
-        if (hold >= 1) onBurnt();
-      }
       // déchirure : le doigt qui glisse vers la droite tire la bande (maintenir sans bouger = elle avance doucement) ;
       // stick-slip DÉTERMINISTE (lot 07, voir TEAR_WELDS) : elle accroche, la tension monte (le sachet penche un rien),
       // puis elle file jusqu'au doigt d'un coup — crans espacés si le geste est lent, coupe continue s'il est vif
-      if (phase === 'sealed' && style !== 'burn') {
-        if (auto.burn) startAutoTear(rolling ? RETROUSSE.autoSerie : style === 'fan' ? 0.42 : 0.9);
+      if (phase === 'sealed') {
+        if (auto.burn) startAutoTear(rolling ? RETROUSSE.autoSerie : 0.9);
         // maintenir sans glisser : la bande avance doucement toute seule (clavier, appui long)
         if (holding && !ctx.input.dragging) tearTarget = Math.min(1.08, tearTarget + dt * 0.45);
         // vitesse demandée (doigt, clavier ou déchirure auto), lissée sur ~60 ms
@@ -3820,7 +3465,7 @@ export function createOpeningScene(): OpeningScene {
       TFLY.value = fly.t;
       // (S3) fente de lumière : s'ouvre avec la coupe (la tête de lecture de l'enregistrement si on le rejoue), s'éteint
       // pendant que la bande s'envole
-      TSLIT.value = style === 'burn' || rolling ? 0 : sstep(TEAR_SLIT[0], TEAR_SLIT[1], useBake ? bakePlay : tearProgress) * (1 - fly.t);
+      TSLIT.value = style === 'idle' || rolling ? 0 : sstep(TEAR_SLIT[0], TEAR_SLIT[1], useBake ? bakePlay : tearProgress) * (1 - fly.t);
       if (rolling && rollPlayer) {
         // (27/11) Retroussé : même tête de lecture lissée que la Déchirure ; claquements quand elle franchit une rupture
         if (bakeExit.t < 0) {
@@ -3852,12 +3497,12 @@ export function createOpeningScene(): OpeningScene {
       } else if (tearStrip) {
         tearStrip.position.set(fly.t * 0.9, fly.t * 0.6, fly.t * 0.5);
         tearStrip.rotation.z = -fly.t * 0.9;
-        tearStrip.visible = style !== 'burn' && fly.t < 0.999;
+        tearStrip.visible = style !== 'idle' && fly.t < 0.999;
       }
       // (audit PERF1-17) lambeaux : plus d'écriture des 110 matrices ni d'envoi au GPU quand tous sont retombés
       let alive = false;
-      if (shreds && style !== 'burn') for (let i = 0; i < NSH && !alive; i++) alive = sh[i].life > 0;
-      if (shreds && style !== 'burn' && (alive || shredsDirty)) {
+      if (shreds && style !== 'idle') for (let i = 0; i < NSH && !alive; i++) alive = sh[i].life > 0;
+      if (shreds && style !== 'idle' && (alive || shredsDirty)) {
         shredsDirty = alive;
         for (let i = 0; i < NSH; i++) {
           const q = sh[i];
@@ -3876,7 +3521,7 @@ export function createOpeningScene(): OpeningScene {
         }
         shreds.instanceMatrix.needsUpdate = true;
       }
-      if (shreds) shreds.visible = style !== 'burn' && !rolling;
+      if (shreds) shreds.visible = style !== 'idle' && !rolling;
       // défilement accéléré : retourne / range tout seul les cartes sous le seuil ; s'arrête sur les belles
       if (auto.minRank > 0 || auto.reveal) {
         const cur = order[cursor];
@@ -3884,11 +3529,9 @@ export function createOpeningScene(): OpeningScene {
         const admired = performance.now() >= autoHoldUntil;
         // (retours live 02, anti-spoil) « 4★ et + » : TOUTES les cartes se retournent seules, et la scène s'arrête APRÈS
         // une belle carte (avant : elle s'arrêtait face cachée devant une 4★+, ce qui l'annonçait)
-        if (phase === 'opened' && !autoWait && auto.jump && !auto.reveal && fastCard(cur)) (style === 'fan' ? jumpFan : jumpAhead)();
-        else if (phase === 'opened' && !autoWait && (auto.reveal ? admired : auto.minRank > 0)) {
-          if (style === 'fan') revealFan();
-          else revealCurrent();
-        } else if (phase === 'shown' && (!auto.reveal || performance.now() - shownAt >= REVEAL_DWELL_MS) && ((fastCard(cur) && (!auto.reveal || admired)) || (auto.reveal && !!slots[cur] && (slots[cur].rr.rank < 4 || admired)))) nextCard();
+        if (phase === 'opened' && !autoWait && auto.jump && !auto.reveal && fastCard(cur)) jumpAhead();
+        else if (phase === 'opened' && !autoWait && (auto.reveal ? admired : auto.minRank > 0)) revealCurrent();
+        else if (phase === 'shown' && (!auto.reveal || performance.now() - shownAt >= REVEAL_DWELL_MS) && ((fastCard(cur) && (!auto.reveal || admired)) || (auto.reveal && !!slots[cur] && (slots[cur].rr.rank < 4 || admired)))) nextCard();
         else if (phase === 'mythicHold' && auto.reveal && admired) advance();
       }
       shake.update(dt);
@@ -3902,9 +3545,7 @@ export function createOpeningScene(): OpeningScene {
         const t0 = 0.65; // le booster finit de se poser
         // (Éclipse : la fuite respire deux fois plus lentement, un peu plus fort)
         const env = sealedT < t0 ? 0 : Math.min(1, (sealedT - t0) / 0.6) * (0.55 + 0.2 * Math.sin((sealedT - t0) * (eclipse ? 0.9 : 1.8)));
-        const lk = env * (eclipse ? 0.5 + 0.2 * E.aura : 0.5);
-        if (style === 'burn') B.leak = Math.max(lk, hold * 0.55);
-        else B.leak = lk;
+        B.leak = env * (eclipse ? 0.5 + 0.2 * E.aura : 0.5);
       } else if (phase !== 'sealed') sealedT = -1;
       U.burn.value = B.burn;
       U.leak.value = B.leak;
@@ -3941,7 +3582,7 @@ export function createOpeningScene(): OpeningScene {
       dispK += ((display ? 1 : 0) - dispK) * (1 - Math.exp(-dt * 5));
       const pose = tiltPose(display ? 0.3 : 0.12);
       packRig.position.set(0, B.y + L.dispY * dispK + (display ? Math.sin(t * 1.1) * 0.012 : 0), B.z);
-      packRig.rotation.set(pose.x + (display ? Math.sin(t * 0.6) * 0.04 : 0), B.spin + pose.y + (display ? Math.sin(t * 0.4) * 0.12 : 0), tearShake.value * 0.004 - S.trem * 0.06 * (style === 'burn' ? 0 : 1));
+      packRig.rotation.set(pose.x + (display ? Math.sin(t * 0.6) * 0.04 : 0), B.spin + pose.y + (display ? Math.sin(t * 0.4) * 0.12 : 0), tearShake.value * 0.004 - S.trem * 0.06 * (style === 'idle' ? 0 : 1));
       packRig.scale.setScalar(B.s * (1 + (L.dispS - 1) * dispK) * (1 + packLift * 0.025));
       // roue verticale (ordinateur) : le grand booster est la pochette du milieu du tambour — il suit la roue
       for (const tw of twins) tw.rig.visible = false;
@@ -4109,9 +3750,8 @@ export function createOpeningScene(): OpeningScene {
         else stage.camera.setViewOffset(ctx.width, ctx.height, -focusCur, -focusCurY, ctx.width, ctx.height);
       }
       stage.scene.updateMatrixWorld();
-      // effets plein écran (onde de choc, aberration) : centrés sur la carte retournée de l'éventail, sinon sur la scène
-      if (style === 'fan' && focusSlot >= 0 && slots[focusSlot]) proj.copy(slots[focusSlot].mesh.position).applyMatrix4(cardsRig.matrixWorld).project(stage.camera);
-      else proj.set(0, 0, 0).applyMatrix4(rig.matrixWorld).project(stage.camera);
+      // effets plein écran (onde de choc, aberration) : centrés sur la scène
+      proj.set(0, 0, 0).applyMatrix4(rig.matrixWorld).project(stage.camera);
       U.center.value.set(proj.x * 0.5 + 0.5, 0.5 - proj.y * 0.5);
       /*
        * (audit PERF1-07) Téléphone, vitrine au repos (le booster ne fait que flotter, personne ne le touche, rien ne
@@ -4158,17 +3798,14 @@ export function createOpeningScene(): OpeningScene {
       stage.fit(w, h);
       camBase = stage.camera.position.z;
       layout(w, h);
-      // (audit UX2-12) rotation / redimensionnement pendant l'ouverture : éventail final, éventail du World Pack et
-      // rangée du bas reprennent leurs places pour le nouvel écran (au lieu de rester sur l'ancienne mise en page)
+      // (audit UX2-12) rotation / redimensionnement pendant l'ouverture : éventail final et rangée du bas reprennent
+      // leurs places pour le nouvel écran (au lieu de rester sur l'ancienne mise en page)
       if (!slots.length || !order.length) return;
       const re = sideline(gsap.timeline());
       if (phase === 'done') {
         const places = finalPlaces();
         order.forEach((si, k) => re.to(slots[si].p, { ...places[k], duration: 0.3, ease: EASE.glide }, 0));
-      } else if (style === 'fan' && (phase === 'opened' || phase === 'mythicHold')) {
-        const lay = fanLayout();
-        order.forEach((si, k) => k !== cursor - 1 || phase === 'opened' ? re.to(slots[si].p, { ...lay[k], duration: 0.3, ease: EASE.glide }, 0) : null);
-      } else if (style === 'burn' || style === 'tear' || rolling) {
+      } else {
         // cartes déjà rangées (pas pendant le retrait final : elles sortent de l'écran)
         const lastUp = cursor === order.length - 1;
         if (!lastUp && (phase === 'opened' || phase === 'shown')) for (let j = 0; j < cursor; j++) re.to(slots[order[j]].p, { ...rowPlace(j), duration: 0.3, ease: EASE.glide }, 0);

@@ -293,14 +293,10 @@ export const en: Dict = {
 
 
   // ───── src/game/views/shop.ts ─────
-  'shop.hint.holdTouch': 'Hold to open',
-  'shop.hint.holdMouse': 'Hold the click (or Space) to open',
   'shop.hint.tearTouch': 'Swipe right to tear',
   'shop.hint.tearMouse': 'Swipe right (or click) to tear',
   'shop.hint.foldTouch': 'Swipe down',
   'shop.hint.foldMouse': 'Swipe down',
-  'shop.hint.tapTouch': 'Tap to open',
-  'shop.hint.tapMouse': 'Click to open',
   'shop.hint.revealTouch': 'Tap to reveal',
   'shop.hint.revealMouse': 'Click to reveal',
   'shop.hint.nextTouch': 'Tap for the next one',

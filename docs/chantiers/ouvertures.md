@@ -27,13 +27,17 @@ Détail des propositions, réserves et outils : `.claude-tmp/ouvertures-v3-etape
 - Série ×5 / ×10, « Tout révéler », 6★ / GOD PACK après un Retroussé ; images/s face à la Déchirure.
 - Déchirure, glace, étoile : identiques à avant.
 
+## Fait (27/11 soir) — lots 1 et 2
+- Lot 1 (`2aa4e86`) : son propre du Retroussé, livre de sons `ouvertures` cuit à la demande (`src/core/sound/openBank.ts` : `peel` = film qui se décolle, `seal` = soudure qui cède ; sonie alignée par mesure sur l'alu et le tic remplacés ; repli sur eux tant que la cuisson n'est pas faite). Écoute : `.claude-tmp/sons-retrousse/*.wav`. Aperçu dans la fiche d'un booster : vignette au trait par ouverture (`src/game/views/openingPreview.ts`, styles `.pv` dans `progression.css`), jouée à l'affichage, en boucle sur l'ouverture choisie, rejouée au toucher d'une verrouillée.
+- Lot 2 : Brûlure et Éventail retirés. `OPENINGS` sans `burn` / `fan` → `setOpening` les refuse comme inconnus ; un choix resté rangé chez un joueur n'est pas migré, `setOpeningChoice` le joue comme la Déchirure (fiche : Déchirure cochée). Scène : l'état vitrine s'appelle `idle` (ex-`burn`, même comportement), plus de maintien / brûlure / éventail (`revealFan`, `dealFan`, `jumpFan`, `fanLayout`, `FAN_MAX`, jetons `TEASE_STAGGER` / `TEASE_LAST_EXTRA`) ; indications « Maintiens / Touche pour ouvrir » et doigts fantômes `hold` / `tap` retirés (FR + EN). Tests : `openings.test.ts` réécrit ; `atelier.test.ts` tolère `burn-250` / `world-150` sans cosmétique (liste `PENDING`, à vider à mesure que leurs ouvertures arrivent).
+- Vu dans un Chrome sans fenêtre (WebGPU, démo) : ancien choix `burn` → Déchirure (indication et doigt fantôme compris), Déchirure + révélation + 5★ + récap, Retroussé (geste, film retourné, pile), ×10 Retroussé avec GOD PACK sur le dernier morceau (6★ Zeraora), aucune erreur.
+
 ## Reste
-- [ ] Avis de Tom, puis réglages (matière, cadrage, sons).
-- [ ] Son propre au Retroussé (banque cuite, `npm run test:sound`) et aperçu dans la feuille de choix (aucune ouverture n'en a).
-- [ ] Retrait de `burn` / `fan` : repli client sur `tear`, aucune migration ; `burn-250` et `world-150` débloquent alors une nouvelle ouverture ; code mort de la scène supprimé.
-- [ ] 4 autres ouvertures : « Fenêtre » d'abord (demande une rupture des soudures à l'effort dans le simulateur), 3 à trouver avec Tom.
+- [ ] Bruit et masque de la Brûlure dans `buildPackMaterials` (`bakedBurnNoise`, `burnFront`, `U.burn` / `B.burn`, `burnNoise` de `core/tsl`) : inactifs, à retirer APRÈS le commit de la session « sachets » (même bloc).
+- [ ] Note V3 (`updates.data.ts` + `updates.en.ts`) : une ligne « ouvertures » quand les 5 sont là (Brûlure / Éventail retirés, nouvelles à gagner).
+- [ ] 4 autres ouvertures : « Fenêtre » d'abord (demande une rupture des soudures à l'effort dans le simulateur), 3 à trouver avec Tom. Succès libres : `burn-250`, `world-150`, `full-15`, `streak-21`.
 - [ ] Seuils d'étirement de `check.mts` (1 % / 2 %) : la cuisson est à 2,3 % aux épaules du sachet, le contrôle sort donc en échec ; à revoir après l'avis de Tom (la Déchirure en ligne est à 11 % au même test).
-- [ ] À trancher, version en ligne : `glace` (case 20) et `etoile` (case 23) choisies en ligne sont ignorées par `onlineBackend.ts` (lu dans le code) ; patch d'une ligne avant le 20/12.
+- [x] (v2.1.34) `glace` / `etoile` choisies en ligne : jouées.
 
 ## Pièges
 - Une soudure du simulateur garde l'écart de repos des deux faces (0,1 mm) : en longueur nulle, les faces se traversent et scintillent au rendu.

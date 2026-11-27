@@ -39,17 +39,11 @@ import { STREAK_REWARD, streakClaimable, touchStreak } from '../../core/streak';
 /** Indications adaptées à l'appareil : « Touche » au doigt, « Clique » à la souris. */
 const TOUCH = isTouch();
 const HINT = {
-  get hold() {
-    return TOUCH ? tr('shop.hint.holdTouch') : tr('shop.hint.holdMouse');
-  },
   get tear() {
     return TOUCH ? tr('shop.hint.tearTouch') : tr('shop.hint.tearMouse');
   },
   get fold() {
     return TOUCH ? tr('shop.hint.foldTouch') : tr('shop.hint.foldMouse');
-  },
-  get tap() {
-    return TOUCH ? tr('shop.hint.tapTouch') : tr('shop.hint.tapMouse');
   },
   get reveal() {
     return TOUCH ? tr('shop.hint.revealTouch') : tr('shop.hint.revealMouse');
@@ -71,8 +65,8 @@ const WILD_LOOP = { loopStart: 20, loopEnd: 51.3475 };
 const isWild = (c: PackCard) => c.rarity === 'mythic' && c.cardId.startsWith('pkm-');
 /** « 62,4 % » (chiffres à la française) */
 const fmtPct = (x: number) => fmtPctI(x); // (version anglaise) « 62,4 % » / « 62.4% » selon la langue
-/** indication affichée tant que le booster est fermé (dépend de sa mise en scène : brûler, déchirer, toucher) */
-let sealedHint = HINT.hold;
+/** indication affichée tant que le booster est fermé (dépend de sa mise en scène : déchirer, retrousser) */
+let sealedHint = HINT.tear;
 
 /**
  * Boutique + ouverture. Accueil (retours live n°1) — ordinateur, 3 colonnes : à gauche la liste verticale compacte des
@@ -1427,7 +1421,7 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
 
   function start(p: SealedPack, continued = false) {
     // le bouton « Ouvrir » (désormais caché) ne doit pas garder le focus : sinon « maintenir Espace » l'activerait au
-    // lieu de brûler l'emballage
+    // lieu d'ouvrir le booster
     (document.activeElement as HTMLElement | null)?.blur?.();
     setMode('opening');
     info.hidden = true;
@@ -1435,11 +1429,11 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     hint.hidden = false;
     hint.classList.add('hold');
     const st = openStyleOf(p);
-    sealedHint = st === 'tear' ? HINT.tear : st === 'retrousse' ? HINT.fold : st === 'fan' ? HINT.tap : HINT.hold;
+    sealedHint = st === 'retrousse' ? HINT.fold : HINT.tear;
     hintTxt.textContent = sealedHint;
     ring.style.strokeDashoffset = '100';
     // aide au premier geste (UX2-08) : seulement en ouverture manuelle, tant que ce geste n'a jamais réussi
-    const coachSt = st === 'burn' ? 'hold' : st;
+    const coachSt = st;
     const autoOpen = !!batch && (batch.hi || batch.all);
     const coachOn = !autoOpen && !continued && !coachSeen(coachSt);
     coach.className = `coach c-${coachSt}`;

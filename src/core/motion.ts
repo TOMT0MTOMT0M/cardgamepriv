@@ -112,9 +112,6 @@ export const TIER_BEAT: TierBeat[] = [
 export const MYTHIC_SILENCE = 0.3;
 /** 6★ : instant (fraction de `pre`) où la tranche dorée se fend en arc-en-ciel. */
 export const MYTHIC_TURN = 0.5;
-/** Allumage des tranches face cachée (éventail) : délai entre deux cartes (s) et retard supplémentaire de la 5e. */
-export const TEASE_STAGGER = 0.09;
-export const TEASE_LAST_EXTRA = 0.2;
 
 /**
  * Ambiance « Éclipse » (Berserk 5★ / 6★, 11/11 — game/eclipse.ts) : des temps LENTS, en secondes. `teinte` : l'aura du

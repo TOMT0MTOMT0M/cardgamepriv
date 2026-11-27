@@ -1702,15 +1702,11 @@ body.offline .offline-pill, body.server-down .offline-pill { opacity: 1; transfo
 /* aide au premier geste (UX2-08) : un doigt fantôme au-dessus du booster */
 .coach { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 2; pointer-events: none; }
 .coach i { position: absolute; left: -18px; top: -18px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.28); border: 2px solid rgba(255, 255, 255, 0.9); box-shadow: 0 0 24px rgba(255, 255, 255, 0.7); opacity: 0; }
-.coach.c-hold i { animation: coach-hold 1.7s ease-in-out 0.6s 2 both; }
 .coach.c-tear i { top: calc(-18px - 21vh); animation: coach-tear 1.5s cubic-bezier(0.45, 0, 0.3, 1) 0.6s 2 both; }
-.coach.c-fan i { animation: coach-tap 0.9s ease-out 0.6s 3 both; }
 /* Retroussé : le doigt descend (durées = jetons de motion.ts, rien en dur) */
 .coach.c-retrousse i { top: calc(-18px - 14vh); animation: coach-fold calc(var(--dur-emphatique) * 3) var(--ease-standard) var(--dur-emphatique) 2 both; }
-@keyframes coach-hold { 0% { opacity: 0; transform: scale(1.4); } 15% { opacity: 1; transform: scale(1); } 70% { opacity: 1; transform: scale(0.82); box-shadow: 0 0 0 18px rgba(255, 255, 255, 0.25), 0 0 30px rgba(255, 255, 255, 0.8); } 100% { opacity: 0; transform: scale(0.82); } }
 @keyframes coach-tear { 0% { opacity: 0; transform: translateX(-90px); } 15% { opacity: 1; transform: translateX(-90px); } 80% { opacity: 1; transform: translateX(90px); } 100% { opacity: 0; transform: translateX(90px); } }
 @keyframes coach-fold { 0% { opacity: 0; transform: translateY(-40px); } 15% { opacity: 1; transform: translateY(-40px); } 80% { opacity: 1; transform: translateY(110px); } 100% { opacity: 0; transform: translateY(110px); } }
-@keyframes coach-tap { 0% { opacity: 0; transform: scale(1.5); } 30% { opacity: 1; transform: scale(0.9); } 100% { opacity: 0; transform: scale(1); } }
 @media not all { .coach i { animation: none !important; opacity: 0.8; } }
 /* accueil téléphone : bouton « Ouvrir » sous le booster (UX1-13) ; bandeau « déjà tiré » dans le flux, juste au-dessus
    des pochettes au lieu d'être posé dessus (UX2-10) */

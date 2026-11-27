@@ -34,8 +34,8 @@ function rollArt() {
   return `<rect class="pv-back" x="9" y="7" width="22" height="35" rx="1.5"/>${cards(11)}<rect class="pv-bag pv-film" x="9" y="7" width="22" height="35" rx="1.5"/><rect class="pv-lip" x="8.5" y="5.8" width="23" height="3.2" rx="1.6"/>${dot(20, 7.4)}`;
 }
 
-/** Vignette d'aperçu d'une ouverture ; '' si elle n'en a pas (ouverture retirée). */
+/** Vignette d'aperçu d'une ouverture (une nouvelle ouverture ajoute ici son dessin et ses images clés dans progression.css). */
 export function openingPreview(id: OpeningId): string {
-  const art = id === 'retrousse' ? rollArt() : id === 'tear' || id === 'glace' || id === 'etoile' ? tearArt(id) : '';
-  return art ? `<svg class="pv pv-${id === 'retrousse' ? 'roll' : 'tear'}" viewBox="0 0 40 48" aria-hidden="true" focusable="false">${art}</svg>` : '';
+  const roll = id === 'retrousse';
+  return `<svg class="pv pv-${roll ? 'roll' : 'tear'}" viewBox="0 0 40 48" aria-hidden="true" focusable="false">${roll ? rollArt() : tearArt(id)}</svg>`;
 }

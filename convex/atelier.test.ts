@@ -39,7 +39,11 @@ describe('personnalisation du profil — catalogue du 14/11', () => {
       expect(cosmeticsOf(c.need!), c.need).toHaveLength(1);
     }
     // un palier « cosmétique seul » porte toujours un cosmétique (sinon il ne donnerait rien)
-    for (const a of ACHIEVEMENTS) if (a.cos) expect(cosmeticsOf(a.id).length, a.id).toBeGreaterThan(0);
+    // (27/11, V3) sauf, le temps du chantier, les deux succès de la Brûlure et de l'Éventail retirées : ils attendent leur
+    // nouvelle ouverture (docs/chantiers/ouvertures.md) — retirer chaque id de la liste quand son ouverture arrive
+    const PENDING = new Set(['burn-250', 'world-150']);
+    for (const a of ACHIEVEMENTS) if (a.cos && !PENDING.has(a.id)) expect(cosmeticsOf(a.id).length, a.id).toBeGreaterThan(0);
+    for (const id of PENDING) expect(cosmeticsOf(id), `${id} a son ouverture : le retirer de PENDING`).toHaveLength(0);
     // les choix par défaut restent à tout le monde
     expect(TITLE_STYLES[0].unlock(zero)).toBe(true);
     expect(BACKGROUNDS[0].unlock(zero)).toBe(true);
