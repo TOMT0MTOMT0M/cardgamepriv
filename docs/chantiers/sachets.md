@@ -15,7 +15,7 @@ citron `#a6ee0c`, Pop inchangé, Bébou Pack turquoise `#10d0d8` ; booster du mo
 - `9e63807` lot 3 — `core/packSticker.ts` : `gameSachetArt`, mode `film.jeu`, `inkSurface` (matière allégée lue dans `masks`) ; `opening.ts` : `boosterArt` + grand booster ; `packWheel3d.ts` ; `pack.ts` : `PackArt.inked`. Défaut corrigé : lignes du terrain du Sport (liseré sombre sous la craie, trait plus large).
 - `58ed935` lot 4 — Déchirure et Retroussé lisent le masque. `BAKE_REV` / `CREASE_VERSION` NON montés : géométrie cuite identique, `paintCreaseMap` intouché, les nouvelles graines de plis ont leur propre clé de cache (`nonreg.mjs` sans objet).
 - `dc0067b` lot 5 — `EVENT_THEMES` + `eventThemeOf` dans `core/events.ts` (teinte de la palette, sinon nom de l'événement ; teinte libre = logo neutre) ; palette du dashboard = les 6 thèmes (violet, fuchsia, pétrole, cuivre retirés ; un événement enregistré garde sa teinte) ; démo Valorant au thème Jeux vidéo ; date de fin sur l'étiquette dateuse.
-- lot 6 — génération découpée (`pause()` entre les étapes, jeu seulement) : pire tâche par sachet 51–61 ms → moins de 50 ms (CPU ×4).
+- `31a33d7` lot 6 — génération découpée (`pause()` entre les étapes, jeu seulement) : pire tâche par sachet 51–61 ms → moins de 50 ms (CPU ×4).
 - Lien V3 mis à jour (`mettre-en-ligne-v2.cmd`, 27/11 16 h 38, lots 3 à 5 ; le lot 6 suit à la prochaine mise en ligne).
 
 ## Mesures (Chrome sans fenêtre, WebGPU, GPU du PC de Tom, 390 × 844, `/jeu/?demo&quality=mobile`, 3 tours)
