@@ -36,6 +36,14 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '27 Nov', title: 'On phones, buttons stay in place', tag: 'corrigé',
+        points: [
+          '👤 Player profile: “See their collection”, “Offer a trade”, “Message” and “Add friend” now sit under their name instead of spilling over their banner (and on computers, their name is no longer cut off).',
+          '📦 Opening recap: the buttons fit inside the panel (“Forge these duplicates” across the full width) and the chat bubble no longer covers them.',
+          '🔤 With a large text size on your phone, the Trades tabs stay on one line and the recap no longer slips under the top bar.',
+        ],
+      },
+      {
         date: '27 Nov', title: 'Badges become medallions', tag: 'amélioré',
         points: [
           '🏅 Profile badges are now drawn medallions (booster, cup, book, star, padlock, flame…), each with its own tint.',

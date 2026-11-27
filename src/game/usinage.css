@@ -546,3 +546,38 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
   .f-dr-head b { font: 600 15px var(--title); color: #fff; }
   .f-dr-x { width: 40px; height: 40px; border-radius: var(--r-pill); border: 1px solid var(--gm-line-2); background: none; color: var(--ink-2); font: 500 16px/1 var(--mono); }
 }
+
+/* (v2.1.37) téléphone : aucun bouton ne sort de son cadre ni ne passe sur les cartes, même avec la grande taille de texte du téléphone */
+@media (max-width: 860px) {
+  /* récap d'ouverture : pas de bulle du chat sur ses boutons (elle revient avec la boutique), comme pendant l'ouverture */
+  body:has(.shop .summary:not([hidden])) .chat { display: none; }
+}
+@media (max-width: 640px) {
+  .btn-primary, .btn-ghost { max-width: 100%; }
+}
+/* profil d'un autre joueur, tablette et ordinateur : les 4 actions écrasaient le pseudo (« Léa (ro… ») → elles passent à la ligne, à droite, quand la place manque */
+@media (min-width: 601px) {
+  .pf-head:has(.pf-see-coll) { flex-wrap: wrap; row-gap: 12px; }
+  .pf-head:has(.pf-see-coll) .pf-id { flex: 1 1 280px; }
+  .pf-actions:has(.pf-see-coll) { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; max-width: 100%; }
+}
+@media (max-width: 600px) {
+  /* profil d'un autre joueur : 4 actions depuis « Message » → une rangée sous le pseudo, plus sur la bannière ; « Profil » caché comme prévu au téléphone */
+  .pf-eyebrow { display: none; }
+  .pf-head:has(.pf-see-coll) { flex-wrap: wrap; row-gap: 12px; }
+  .pf-actions:has(.pf-see-coll) { position: static; order: 3; flex: 1 1 100%; flex-wrap: wrap; gap: 6px; padding: 0; }
+  .pf-actions:has(.pf-see-coll) > * { flex: 1 1 auto; min-width: 0; min-height: 38px; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.25; }
+  /* récap : deux colonnes qui ne dépassent jamais le panneau ; « Forger ces doublons » sur toute la largeur */
+  .sum-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sum-actions .btn-ghost { min-width: 0; padding-inline: 10px; white-space: normal; text-wrap: balance; line-height: 1.25; }
+  .sum-actions .forge-dups { grid-column: 1 / -1; }
+  /* contrats : la pastille « pas encore » reste dans sa carte */
+  .ct-tier .ct-tp { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+}
+/* récap au téléphone tenu debout : jamais sous la barre du haut (petit écran, grand texte) ; c'est la grille des cartes, qui défile déjà, qui rétrécit
+   (pas en paysage : la hauteur y est déjà réglée par style.css) */
+@media (max-width: 600px) and (min-height: 540px) {
+  .summary { display: flex; flex-direction: column; max-height: calc(100dvh - var(--top) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 32px); }
+  .summary > * { flex: none; }
+  .summary.multi .sum-cards { flex: 0 1 auto; min-height: 96px; grid-auto-rows: max-content; align-content: start; }
+}

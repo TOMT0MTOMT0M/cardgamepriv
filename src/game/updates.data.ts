@@ -71,6 +71,14 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '27 nov.', title: 'Au téléphone, les boutons restent à leur place', tag: 'corrigé',
+        points: [
+          '👤 Profil d’un joueur : « Voir sa collection », « Proposer un échange », « Message » et « Ajouter en ami » se rangent sous son pseudo au lieu de déborder sur sa bannière (et sur ordinateur, son pseudo n’est plus coupé).',
+          '📦 Récap d’ouverture : les boutons tiennent dans le panneau (« Forger ces doublons » sur toute la largeur) et la bulle du chat ne passe plus dessus.',
+          '🔤 Avec une grande taille de texte sur le téléphone, les onglets des Échanges restent sur une ligne et le récap ne passe plus sous la barre du haut.',
+        ],
+      },
+      {
         date: '27 nov.', title: 'Des badges en médaillons', tag: 'amélioré',
         points: [
           '🏅 Les badges du profil deviennent des médaillons dessinés (booster, coupe, livre, étoile, cadenas, flamme…), chacun avec sa teinte.',
