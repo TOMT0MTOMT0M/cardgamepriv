@@ -287,6 +287,14 @@ export const fr = {
   'shop.dupWord': { one: 'doublon', other: 'doublons' },
   'shop.best': 'meilleure',
   'shop.contracts': 'Contrats',
+  'shop.forgeDups': 'Forger ces doublons · {n}', // (v2.1.34)
+  'shop.waysT': 'Un booster plus vite :',
+  'shop.wayAdvent': { one: "Avent : {n} case avec des boosters à ouvrir", other: "Avent : {n} cases avec des boosters à ouvrir" },
+  'shop.wayMissions': { one: '{n} mission à réclamer', other: '{n} missions à réclamer' },
+  'shop.wayMissionsTodo': { one: 'Missions du jour : {n} à finir', other: 'Missions du jour : {n} à finir' },
+  'shop.wayStreak': 'Série de 7 jours : +{n} boosters à réclamer',
+  'shop.wayCal': { one: 'Calendrier de connexion : +{n} booster du jour', other: 'Calendrier de connexion : +{n} boosters du jour' },
+  'shop.wayBuy': 'En acheter un · {n} pièces',
   'shop.newBang': 'NOUVELLE !',
 
   // ───── src/game/views/shop.ts (à la main) ─────
@@ -525,6 +533,7 @@ export const fr = {
   'fg.locked': { one: '· {nf} engagé 🔒', other: '· {nf} engagés 🔒' },
   'fg.values': '1★ = 5 · 2★ = 15 · 3★ = 40 · 4★ = 100 · 5★ = 300 · 6★ = 1 000 pièces',
   'fg.allOf': 'Tous les {stars} ({n} · {v}){prot}',
+  'fg.allLow': 'Toutes les 4★ et moins ({n} · {v}){prot}', // (v2.1.34)
   'fg.protLeft': { one: '· {n} protégée laissée', other: '· {n} protégées laissées' },
   'fg.nothing': 'Rien',
   'fg.cancelQuick': 'Annuler la sélection rapide',

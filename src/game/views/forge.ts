@@ -66,6 +66,27 @@ export function forgeCount(st: GameState): number {
   return n;
 }
 
+// (v2.1.34) présélection venue du récap d'ouverture (« Forger ces doublons ») : consommée au prochain rendu de la Forge, jamais envoyée sans le bouton de la Forge
+let preselect: { items: StakeItem[]; at: number } | null = null;
+export const setForgePreselect = (items: StakeItem[]) => {
+  preselect = items.length ? { items, at: Date.now() } : null;
+};
+/** ce qui est vraiment forgeable parmi des cartes tirées (n exemplaires par carte) : ni protégées, ni engagées, ni le dernier exemplaire */
+export function forgeablePicks(st: GameState, drawn: Array<{ cardId: string; rarity: RarityId }>): StakeItem[] {
+  const want = new Map<string, number>();
+  for (const c of drawn) want.set(cardKey(c), (want.get(cardKey(c)) ?? 0) + 1);
+  const out: StakeItem[] = [];
+  for (const d of forgeDups(st)) {
+    const w = want.get(cardKey(d));
+    if (w) out.push({ cardId: d.cardId, rarity: d.rarity, count: Math.min(w, d.spare) });
+  }
+  return out.slice(0, BURN_MAX_ITEMS);
+}
+
+/** (v2.1.34) puce « Toutes les 4★ et moins » : les 1★ à 4★ d'un coup */
+const LOW_RARS: RarityId[] = ['common', 'uncommon', 'rare', 'epic'];
+type QuickId = RarityId | 'low';
+
 export function createForge(backend: GameBackend, shell: Shell) {
   const el = h('div', 'forge-view');
   const sel = new Map<string, StakeItem>();
@@ -88,6 +109,18 @@ export function createForge(backend: GameBackend, shell: Shell) {
       return;
     }
     const dups = forgeDups(st);
+    if (preselect) {
+      const pre = preselect;
+      preselect = null;
+      if (Date.now() - pre.at < 120_000) {
+        sel.clear();
+        undo = null;
+        for (const it of pre.items) {
+          const d = dups.find((x) => cardKey(x) === cardKey(it));
+          if (d && sel.size < BURN_MAX_ITEMS) sel.set(cardKey(d), { cardId: d.cardId, rarity: d.rarity, count: Math.min(it.count, d.spare) });
+        }
+      }
+    }
     for (const [k, v] of sel) {
       const d = dups.find((x) => cardKey(x) === k);
       if (!d) sel.delete(k);
@@ -99,19 +132,27 @@ export function createForge(backend: GameBackend, shell: Shell) {
     const n = [...sel.values()].reduce((a, c) => a + c.count, 0);
     const rars = (['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'] as RarityId[]).filter((r) => dups.some((d) => d.rarity === r));
     // sélection rapide : comme le remplissage auto des contrats, elle laisse de côté les cartes protégées (UX4-06)
-    const quick = (r: RarityId) => dups.filter((d) => d.rarity === r && !d.protect.length);
-    const quickProt = (r: RarityId) => dups.filter((d) => d.rarity === r && d.protect.length).length;
+    const inQ = (r: QuickId, x: RarityId) => (r === 'low' ? LOW_RARS.includes(x) : x === r);
+    const quick = (r: QuickId) => dups.filter((d) => inQ(r, d.rarity) && !d.protect.length);
+    const quickProt = (r: QuickId) => dups.filter((d) => inQ(r, d.rarity) && d.protect.length).length;
     // (17/11, Hugo) la sélection rapide s'arrête à la limite du serveur : BURN_MAX_ITEMS cartes différentes par fournée
     // (les autres étoiles déjà choisies comptent) ; on brûle, puis on recommence pour la suite
-    const room = (r: RarityId) => BURN_MAX_ITEMS - [...sel.values()].filter((v) => v.rarity !== r).length;
-    const quickPick = (r: RarityId) => quick(r).slice(0, Math.max(0, room(r)));
-    const quickOn = (r: RarityId) => quickPick(r).length > 0 && quickPick(r).every((d) => sel.get(cardKey(d))?.count === d.spare);
+    const room = (r: QuickId) => BURN_MAX_ITEMS - [...sel.values()].filter((v) => !inQ(r, v.rarity)).length;
+    const quickPick = (r: QuickId) => quick(r).slice(0, Math.max(0, room(r)));
+    const quickOn = (r: QuickId) => quickPick(r).length > 0 && quickPick(r).every((d) => sel.get(cardKey(d))?.count === d.spare);
+    // (v2.1.34) « Toutes les 4★ et moins » : seulement s'il y a au moins deux étoiles différentes à regrouper
+    const lowChip = () => {
+      if (rars.filter((r) => LOW_RARS.includes(r)).length < 2) return '';
+      const q = quickPick('low');
+      const np = quickProt('low');
+      return `<button class="chip${quickOn('low') ? ' on' : ''}" data-q="low" style="--rc:var(--ink-2)"${q.length ? '' : ' disabled'} aria-pressed="${quickOn('low')}">${tr('fg.allLow', { n: q.reduce((a, d) => a + d.spare, 0), v: fmtCoins(q.reduce((a, d) => a + d.spare * CARD_VALUE[d.rarity], 0)), prot: np ? ` <small>${tr('fg.protLeft', { n: np })}</small>` : '' })}</button>`;
+    };
     const full = sel.size >= BURN_MAX_ITEMS;
     const anyMark = dups.some((d) => d.protect.length || d.locked);
     const free = dups.reduce((a, d) => a + d.spare, 0);
     el.innerHTML = `<div class="gm-panel gm-forge"><div class="gm-ph"><b>${tr('fg.title')}</b><span class="muted">${tr('fg.count', { n: free, nf: fmtN(free), locked: lockedN ? tr('fg.locked', { n: lockedN, nf: fmtN(lockedN) }) : '' })}</span></div> <!-- i18n-ok -->
       <div class="muted fg-rate">${tr('fg.values')}</div>
-      <div class="gm-quick">${rars.map((r) => {
+      <div class="gm-quick">${lowChip()}${rars.map((r) => {
         const q = quickPick(r);
         const np = quickProt(r);
         return `<button class="chip${quickOn(r) ? ' on' : ''}" data-q="${r}" style="--rc:${rarity(r).hex}"${q.length ? '' : ' disabled'} aria-pressed="${quickOn(r)}">${tr('fg.allOf', { stars: starsTxt(r), n: q.reduce((a, d) => a + d.spare, 0), v: fmtCoins(q.reduce((a, d) => a + d.spare * CARD_VALUE[r], 0)), prot: np ? ` <small>${tr('fg.protLeft', { n: np })}</small>` : '' })}</button>`;
@@ -187,7 +228,7 @@ export function createForge(backend: GameBackend, shell: Shell) {
     el.querySelectorAll<HTMLElement>('[data-q]').forEach((b) =>
       b.addEventListener('click', () => {
         if (isPending('forge')) return;
-        const r = b.dataset.q as RarityId;
+        const r = b.dataset.q as QuickId;
         undo = new Map([...sel].map(([k, v]) => [k, { ...v }]));
         // deuxième toucher sur la même puce : on la retire (sélection rapide annulable)
         if (quickOn(r)) for (const d of quick(r)) sel.delete(cardKey(d));

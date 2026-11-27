@@ -2,7 +2,7 @@ import { errText } from '../../core/errors';
 import '../../core/i18n/fr/game.views.games'; // (textes de ce module, version anglaise)
 import { locale, t as tr, lang } from '../../core/i18n';
 import type { GameBackend } from '../backend';
-import { liveRegen } from '../backend';
+import { cardKey, liveRegen, lockedCards } from '../backend';
 import type { Shell } from '../shell';
 import type { AbuseAlertView, DuelSideView, DuelView, RoyaleView, RouletteView } from '../eco';
 import { CARD_STARS, CARD_VALUE, fmtCoins, stakeValue, type StakeItem } from '../../core/economy';
@@ -849,6 +849,40 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
     }
     const colors = ['#e8927c', '#7fb58a', '#6bb3e0', '#c79be8', '#e0c46b', '#e07a9b', '#8fd0c4', '#d39a6b'];
     const stakeOf = (p: RoulettePrice | undefined) => (p?.kind === 'coins' ? { coins: p.coins, cards: [] } : { coins: 0, cards: stakeCards });
+    // (v2.1.34) « Même mise que la dernière fois » : la dernière mise posée est gardée sur l'appareil (numéro, façon de payer, cartes)
+    const LAST_BET = 'bebou.rouletteBet';
+    const lastBet = (): { nums: number[]; price: RoulettePrice; cards: StakeItem[] } | null => {
+      try {
+        const v = JSON.parse(localStorage.getItem(LAST_BET) ?? 'null');
+        // (relecture) valeur abîmée sur l'appareil : ignorée plutôt que de casser le panneau de mise
+        return v && Array.isArray(v.nums) && v.nums.every(Number.isInteger) && v.price && (v.cards == null || Array.isArray(v.cards)) ? v : null;
+      } catch {
+        return null;
+      }
+    };
+    /** ce qui reste possible de la dernière mise : numéros encore libres, cartes encore possédées et non engagées */
+    const sameBetPlan = () => {
+      const lb = lastBet();
+      if (!lb || cur?.round?.bets.some((b) => b.userId === cur?.me)) return null;
+      const nums = lb.nums.filter((x) => x >= 1 && x <= ROULETTE_NUMBERS && !cells[x - 1]?.classList.contains('taken')).slice(0, MAX_NUMBERS);
+      if (!nums.length) return null;
+      const opts = ROULETTE_PRICES[nums.length as 1];
+      const i = opts.findIndex((o) => (o.kind === 'coins' ? lb.price.kind === 'coins' && o.coins === lb.price.coins : lb.price.kind === 'cards' && o.rarity === lb.price.rarity && o.count === lb.price.count));
+      if (i < 0) return null;
+      let cards: StakeItem[] = [];
+      if (opts[i].kind === 'cards') {
+        const locked = lockedCards(backend.state);
+        cards = (lb.cards ?? []).flatMap((c) => {
+          const own = backend.state.collection.find((x) => cardKey(x) === cardKey(c));
+          const n = own ? Math.min(c.count, own.count - (locked.get(cardKey(own)) ?? 0)) : 0;
+          return n > 0 ? [{ ...c, count: n }] : [];
+        });
+        if (!cards.length) return null;
+      }
+      return { nums, i, cards, price: opts[i] };
+    };
+    const sameBetHtml = (plan: ReturnType<typeof sameBetPlan>) =>
+      plan ? `<button class="btn-ghost sm gm-same">${tr('gm.sameBet', { nums: plan.nums.join(', '), what: plan.price.kind === 'coins' ? tr('gm.coinsN', { n: fmtCoins(plan.price.coins) }) : esc(priceLabel(plan.price)) })}</button>` : '';
     const drawBet = () => {
       const bet = body.querySelector<HTMLElement>('.gm-bet');
       if (!bet) return; // (page quittée pendant l'envoi)
@@ -874,6 +908,7 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
       const picked = stakeCards.reduce((a, c) => a + c.count, 0);
       const ok = !!n && !!matchPrice(n, stake) && (p?.kind !== 'coins' || p.coins <= bal);
       bet.innerHTML = `<div class="gm-ph"><b>${tr('gm.betBtn')}</b>${slot ? `<span class="muted">${tr('gm.drawOf', { slot: esc(slot) })}</span>` : ''}</div>
+        ${!n ? sameBetHtml(sameBetPlan()) : ''}
         <div class="gm-stepl${n ? ' done' : ' cur'}"><i>01</i><span>${n ? `${plural(n, 'numéro')} : <b>${[...sel].sort((a, b) => a - b).join(', ')}</b>` : tr('gm.tapNumbers', { n: MAX_NUMBERS })}</span></div> <!-- i18n-ok -->
         <div class="gm-stepl${n ? (ok ? ' done' : ' cur') : ''}"><i>02</i><span>${tr('gm.payment', { x: p ? ` · <b>${p.kind === 'coins' ? tr('gm.coinsN', { n: fmtCoins(p.coins) }) : esc(priceLabel(p))}</b>` : '' })}</span></div>
         ${n ? `<div class="seg gm-pay" role="radiogroup" aria-label="${tr('gm.payWith')}">${opts.map((o, i) => `<button role="radio" data-i="${i}" aria-checked="${i === pay}" class="${i === pay ? 'on' : ''}">${o.kind === 'coins' ? `${COIN_ICON}${fmtCoins(o.coins)}` : esc(priceLabel(o))}</button>`).join('')}</div>` : ''}
@@ -890,6 +925,19 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
           drawBet();
         }),
       );
+      bet.querySelector('.gm-same')?.addEventListener('click', () => {
+        const plan = sameBetPlan();
+        if (!plan) return;
+        sel.clear();
+        cells.forEach((c) => c.classList.remove('sel'));
+        for (const x of plan.nums) {
+          sel.add(x);
+          cells[x - 1]?.classList.add('sel');
+        }
+        pay = plan.i;
+        stakeCards = plan.cards;
+        drawBet();
+      });
       bet.querySelector('.gm-pick')?.addEventListener('click', async () => {
         if (p?.kind !== 'cards') return;
         const res = await pickCards(backend, stakeCards, { title: `Roulette : ${priceLabel(p)}`, hint: tr('gm.pickExact', { n: p.count, stars: starsTxt(p.rarity) }), onlyRarity: p.rarity });
@@ -904,6 +952,11 @@ export function createGamesView(backend: GameBackend, shell: Shell) {
         void guarded('bet', btn, async () => {
           try {
             await busyButton(btn, backend.eco.placeBet(nums, stake));
+            try {
+              if (p) localStorage.setItem(LAST_BET, JSON.stringify({ nums, price: p, cards: stake.cards }));
+            } catch {
+              /* stockage indisponible */
+            }
             sfx('chime');
             toast(tr('gm.betDone', { nums: plural(nums.length, 'numéro'), slot }), 'ok'); // i18n-ok
             sel.clear();

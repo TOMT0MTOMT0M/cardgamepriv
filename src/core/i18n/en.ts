@@ -364,6 +364,14 @@ export const en: Dict = {
   'shop.dupWord': { one: 'duplicate', other: 'duplicates' },
   'shop.best': 'best',
   'shop.contracts': 'Contracts',
+  'shop.forgeDups': 'Forge these duplicates · {n}',
+  'shop.waysT': 'Get a booster sooner:',
+  'shop.wayAdvent': { one: 'Advent: {n} door with boosters to open', other: 'Advent: {n} doors with boosters to open' },
+  'shop.wayMissions': { one: '{n} mission to claim', other: '{n} missions to claim' },
+  'shop.wayMissionsTodo': { one: 'Daily missions: {n} left to finish', other: 'Daily missions: {n} left to finish' },
+  'shop.wayStreak': '7-day streak: +{n} boosters to claim',
+  'shop.wayCal': { one: 'Login calendar: +{n} booster today', other: 'Login calendar: +{n} boosters today' },
+  'shop.wayBuy': 'Buy one · {n} coins',
   'shop.newBang': 'NEW!',
 
   // ───── src/game/views/shop.ts (à la main) ─────
@@ -602,6 +610,7 @@ export const en: Dict = {
   'fg.locked': { one: '· {nf} committed 🔒', other: '· {nf} committed 🔒' },
   'fg.values': '1★ = 5 · 2★ = 15 · 3★ = 40 · 4★ = 100 · 5★ = 300 · 6★ = 1,000 coins',
   'fg.allOf': 'All {stars} ({n} · {v}){prot}',
+  'fg.allLow': 'All 4★ and below ({n} · {v}){prot}',
   'fg.protLeft': { one: '· {n} protected left out', other: '· {n} protected left out' },
   'fg.nothing': 'Nothing',
   'fg.cancelQuick': 'Cancel the quick selection',

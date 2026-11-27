@@ -7,6 +7,7 @@ import { framed, titleHtml } from '../cosmeticArt';
 import { SEASON0_KEY, SEASON0_PLAYER_PACKS, seasonEndAt, seasonLabel, seasonOf, seasonReward, seasonStandings, type SeasonBoard } from '../../core/seasons';
 import { errMsg, esc, fmtN, fmtPct, h, plural, toast } from '../ui';
 import { friendBtn } from './friends';
+import { reducedMotion } from '../../core/motion';
 import '../progression.css';
 
 /**
@@ -42,8 +43,9 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
   const el = h('div', 'lb-wrap');
   el.innerHTML = `
     <div class="seg lb-boards">${BOARDS().map((b) => `<button data-b="${b.id}"${b.id === 'pct' ? ' class="on"' : ''}>${b.label}</button>`).join('')}</div>
+    <div class="seg lb-scope" role="group" aria-label="${tr('lb.scopeA')}" hidden><button type="button" data-s="all" class="on" aria-pressed="true">${tr('lb.scopeAll')}</button><button type="button" data-s="friends" aria-pressed="false">${tr('lb.scopeFriends')}</button></div>
     <div class="lb-season" hidden></div>
-    <div class="lb-mine" hidden></div>
+    <div class="lb-mine" hidden role="button" tabindex="0" aria-label="${tr('lb.goMine')}"></div>
     <div class="lb-podium"></div>
     <div class="lb-list"></div>
     <div class="lb-past" hidden></div>`;
@@ -51,6 +53,28 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
   const mineEl = el.querySelector<HTMLElement>('.lb-mine')!;
   const listEl = el.querySelector<HTMLElement>('.lb-list')!;
   let board: Board = 'pct';
+  let scope: 'all' | 'friends' = 'all'; // (v2.1.34) « Tous / Amis » : amis = backend.state.social.friends + moi, rangs réels gardés
+  const scopeEl = el.querySelector<HTMLElement>('.lb-scope')!;
+  scopeEl.querySelectorAll<HTMLButtonElement>('[data-s]').forEach((b) =>
+    b.addEventListener('click', () => {
+      scope = b.dataset.s as 'all' | 'friends';
+      scopeEl.querySelectorAll<HTMLButtonElement>('[data-s]').forEach((x) => (x.classList.toggle('on', x === b), x.setAttribute('aria-pressed', String(x === b))));
+      shell?.sfx.tick(1.2, 0.04);
+      render();
+    }),
+  );
+  // (v2.1.34) toucher le bandeau « tu es Xe » : défile jusqu'à ma ligne et l'éclaire (animation = jetons de motion)
+  const goMine = () => {
+    const row = el.querySelector<HTMLElement>('.lb-pd.is-me, .lb-row.is-me');
+    if (!row) return;
+    row.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' });
+    row.classList.remove('lb-flash');
+    void row.offsetWidth;
+    row.classList.add('lb-flash');
+    row.addEventListener('animationend', () => row.classList.remove('lb-flash'), { once: true });
+  };
+  mineEl.addEventListener('click', goMine);
+  mineEl.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), goMine()));
   let rows: LeaderRow[] | null = null;
   /** (11/11) saisons mensuelles : la saison en cours et l'historique des podiums */
   let season: SeasonBoard | null = null;
@@ -135,6 +159,9 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
     podiumEl.replaceChildren();
     listEl.replaceChildren();
     mineEl.hidden = true;
+    const fr = new Set(backend.state.social.friends.map((f) => f.userId)); // (amis réels : state.friends = tout le club)
+    scopeEl.hidden = !me || !fr.size;
+    const friendsOnly = scope === 'friends' && !scopeEl.hidden;
     if (!rows) return void (podiumEl.innerHTML = '<div class="muted">' + tr('common.loading2') + '</div>');
     // (13/11) ta place, et ce qu'il manque pour passer devant le joueur juste au-dessus
     const mi = me ? sorted.findIndex((r) => r.id === me) : -1;
@@ -148,6 +175,8 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
       }</small></span><span class="lb-mine-v">${b.unit(r)}</span>`;
     }
     const topV = Math.max(1e-9, b.value(sorted[0]));
+    // (v2.1.34) filtre Amis : on garde le rang réel (index dans le classement complet), sans podium
+    const ranked = sorted.map((r, i) => ({ r, i })).filter(({ r }) => !friendsOnly || r.id === me || fr.has(r.id));
     const pctOf = (r: LeaderRow) => Math.max(2, Math.min(100, (b.value(r) / topV) * 100)).toFixed(1);
     if (!sorted.length) return void (podiumEl.innerHTML = '<div class="muted">' + tr('lb.nobody') + '</div>');
     // podium : toujours 3 places de même gabarit, dans l'ordre 2e – 1er – 3e (places vides si moins de 3 joueurs)
@@ -172,10 +201,10 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
       cell.insertAdjacentHTML('beforeend', friendBtn(backend, r.id, r.name, 'row') || SLOT);
       row.append(cell);
     }
-    podiumEl.append(row);
+    if (!friendsOnly) podiumEl.append(row);
     // la liste reprend APRÈS le podium (les 3 premiers n'y sont plus répétés : audit UX3-17)
-    for (const [i, r] of sorted.entries()) {
-      if (i < 3) continue;
+    for (const { r, i } of ranked) {
+      if (!friendsOnly && i < 3) continue;
       const line = h('a', `lb-row${r.id === me ? ' is-me' : ''}${i < 3 ? ` top${i + 1}` : ''}`);
       line.href = `#/profil/${encodeURIComponent(r.id)}`;
       const t = titleOf(r.cosmetics.title);
@@ -190,6 +219,7 @@ export function createLeaderboard(backend: GameBackend, shell?: Shell): Leaderbo
         listEl.append(wrap);
       }
     }
+    if (friendsOnly && !ranked.some(({ r }) => r.id !== me)) listEl.insertAdjacentHTML('beforeend', '<div class="muted lb-note">' + tr('lb.noFriends') + '</div>');
     if (b.id === 'pct') listEl.insertAdjacentHTML('beforeend', '<div class="muted lb-note">' + tr('lb.king') + '</div>');
     if (b.id === 'season' && !season?.current) listEl.replaceChildren();
   }

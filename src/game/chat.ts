@@ -7,7 +7,7 @@ import './chat.css';
 import type { BigPull, GameBackend } from './backend';
 import { CHAT_GENERAL, CHAT_MENTIONS_MAX, CHAT_REACTS, CHAT_TEXT_MAX, chatSnippet, cleanChatText, dmKey, dmPeer, type ChatMsg } from '../core/chat';
 import { createChatStore, type ChatEvent } from './chatStore';
-import { cardTile, esc, fold, h, popLayer, pushLayer, starsHtml, thumbUrl, toast } from './ui';
+import { cardTile, esc, fold, h, navigate, popLayer, pushLayer, starsHtml, thumbUrl, toast } from './ui';
 import { catalogEntry } from '../core/sets/themes';
 import { rarity, type RarityId } from '../core/rarity';
 import { realCardUrl } from './cardImages';
@@ -344,7 +344,7 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     const meId = backend.state.user?.id ?? '';
     const pc = f.mine ? undefined : players().get(m.userId)?.cos;
     const ttl = pc?.title ? titleOf(pc.title) : undefined;
-    const head = f.cont ? '' : `<div class="cm-h"><b>${esc(f.mine ? tr('chat.me') : name)}</b>${ttl ? `<span class="cm-ttl"${accentColor(pc?.accent) ? ` style="--pa:${accentColor(pc?.accent)}"` : ''}>${titleHtml(ttl.label, pc?.titleStyle, 'ts-light')}</span>` : ''}<time datetime="${new Date(m.at).toISOString()}">${hhmm(m.at)}</time></div>`;
+    const head = f.cont ? '' : `<div class="cm-h"><b>${f.mine ? esc(tr('chat.me')) : `<a class="cm-who" href="#/profil/${encodeURIComponent(m.userId)}">${esc(name)}</a>`}</b>${ttl ? `<span class="cm-ttl"${accentColor(pc?.accent) ? ` style="--pa:${accentColor(pc?.accent)}"` : ''}>${titleHtml(ttl.label, pc?.titleStyle, 'ts-light')}</span>` : ''}<time datetime="${new Date(m.at).toISOString()}">${hhmm(m.at)}</time></div>`;
     const reply = m.reply ? `<div class="cm-reply"><b>${esc(m.reply.name)}</b> ${esc(m.reply.text)}</div>` : '';
     const body = m.deleted ? '<div class="cm-t gone">' + tr('chat.deleted') + '</div>' : m.text ? `<div class="cm-t">${t.html}</div>` : '';
     const rs = (m.reacts ?? []).filter((r) => r.by.length);
@@ -775,6 +775,12 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
   });
   thread.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
+    // (v2.1.34) le pseudo de l'auteur ouvre son profil (le chat plein écran se ferme : navigate ferme les couches)
+    const who = t.closest<HTMLAnchorElement>('a.cm-who');
+    if (who) {
+      e.preventDefault();
+      return navigate(who.getAttribute('href')!);
+    }
     const key = curKey();
     if (!key || t.closest('a')) return;
     if (t.closest('.chat-older')) return void store.older(key).then(() => renderThread('older'));

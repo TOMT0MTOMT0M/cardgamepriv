@@ -30,5 +30,11 @@ export const fr = {
   'lb.king': 'Le classement roi : la complétion globale de la collection. Le premier gagne le titre « Numéro un ».',
   'lb.joining': ' <b>Tu entres dans la saison dans l’heure</b> : tes cartes comptent à partir de là.',
   'lb.mythics': '6★ & secrets',
+  // (v2.1.34) filtre Tous / Amis, bannière « ta place » touchable
+  'lb.scopeA': 'Qui afficher',
+  'lb.scopeAll': 'Tous',
+  'lb.scopeFriends': 'Amis',
+  'lb.goMine': 'Aller à ta ligne',
+  'lb.noFriends': 'Aucun de tes amis n’est classé ici.',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

@@ -66,4 +66,8 @@ export const en: PartOf<typeof fr> = {
   'am.selected': 'Selected: copy it (Ctrl+C).',
   'am.ask': 'Send request',
   'am.countOnline': '{friends} · {n} online',
+  'am.msg': 'Message',
+  'am.msgTitle': 'Write privately to {name}',
+  'am.share': 'Share',
+  'am.shareText': 'Come open boosters with me on Bébou!',
 };

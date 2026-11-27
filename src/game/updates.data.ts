@@ -61,6 +61,21 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '27 nov.', title: 'Plus pratique partout : collection, marché, forge, amis', tag: 'amélioré',
+        points: [
+          '📚 Collection : une rangée « Presque finis » en tête des albums, avec ceux où il ne te manque que 1 à 3 cartes (« −2 » sur la pochette).',
+          '📚 Dans un album, le fil thème › famille › album se touche pour remonter d’un coup. Au téléphone, les filtres se rangent derrière un bouton « Filtres ».',
+          '🛒 Marché : chaque annonce te dit si tu as déjà la carte ou si elle est dans tes envies, et un filtre « Mes manquantes / Mes envies » les trie.',
+          '👤 Touche un pseudo (vendeur au marché, chat, « chez les joueurs » sous une carte) pour ouvrir son profil. Un bouton « Message » sur les profils et tes amis ouvre la conversation privée.',
+          '🏆 Classement : touche « tu es Xe » pour aller à ta ligne, et le filtre « Amis » ne garde que tes amis, avec leurs vrais rangs.',
+          '🔥 Forge : « Forger ces doublons » depuis le récap d’ouverture (rien n’est brûlé sans ton OK), et une puce « Toutes les 4★ et moins ».',
+          '📦 Réserve vide : le récap te montre comment regagner un booster tout de suite (missions, série, calendrier, achat en pièces).',
+          '🎰 Roulette : « Même mise que la dernière fois » remet ton numéro et ton paiement en un toucher.',
+          '🎁 Parrainage : « Partager » ouvre la feuille de partage de ton téléphone.',
+          '🎄 Les ouvertures « Déchirure glacée » et « Étoile de Noël » du calendrier seront bien jouées une fois choisies.',
+        ],
+      },
+      {
         date: '26 nov.', title: 'Collection chargée plus vite', tag: 'amélioré',
         points: [
           '⚡ Ta collection gardée sur cet appareil reste valable bien plus longtemps, même après une reconnexion : le jeu la recharge moins souvent en entier au démarrage.',

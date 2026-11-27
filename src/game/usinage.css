@@ -501,3 +501,51 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
 /* (26/11, patch v2.1.14) onglet Événement grisé en attendant le 1er décembre : sans lien, non cliquable, sans pastille */
 nav a.nav-off { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 nav a.nav-off .badge { display: none; }
+
+/* (v2.1.34) QOL collection : « presque finis » (−N), fil d'Ariane cliquable, filtres en tiroir au téléphone */
+.al-miss { margin-left: 4px; font-weight: 600; color: #fff; }
+.crumb-trail { display: flex; align-items: center; gap: 4px; min-width: 0; margin-top: -4px; font: 500 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.crumb-trail[hidden] { display: none; }
+.ct-seg { flex: 0 1 auto; min-width: 0; max-width: 42%; padding: 8px 2px; border: 0; background: none; font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ct-seg.cur { flex-shrink: 1; max-width: none; color: #fff; }
+button.ct-seg:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.ct-sep { flex: none; font-style: normal; color: var(--ink-3); }
+.flt-btn, .flt-scrim, .flt-head { display: none; }
+@keyframes flt-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 600px) {
+  .view.collection .flt-btn:not([hidden]) { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin: 0 0 8px; padding: 9px 14px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: none; font: 500 12px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); }
+  .view.collection .flt-btn.has { color: #fff; border-color: #fff; }
+  .view.collection .flt-btn b { font-weight: 600; }
+  .view.collection .filters, .view.collection .cards-bar { display: none; }
+  .view.collection.flt-on .flt-scrim { display: block; position: fixed; inset: 0; z-index: 59; background: rgba(0, 0, 0, 0.6); }
+  /* la bulle du chat (fixe, hors de la pile de la vue) passait par-dessus le tiroir : cachée tant qu'il est ouvert */
+  body:has(.view.collection.flt-on) .chat { display: none; }
+  .view.collection.flt-on .filters:not([hidden]), .view.collection.flt-on .cards-bar:not([hidden]) { display: flex; position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 60; max-height: 80dvh; margin: 0; padding: 12px 14px calc(16px + env(safe-area-inset-bottom)); overflow-y: auto; border: 1px solid var(--gm-line-2); border-bottom: 0; border-radius: var(--r-box) var(--r-box) 0 0; background: #000; box-shadow: none; animation: flt-up var(--dur-standard) var(--ease-entree); }
+  .view.collection.flt-on .flt-head { display: flex; flex: 0 0 100%; align-items: center; justify-content: space-between; font: 500 12px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); }
+  .view.collection .flt-x { width: 40px; height: 40px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: none; font-size: 15px; color: #fff; }
+}
+
+/* (v2.1.34) QOL social */
+.mk-seller { color: inherit; text-decoration: underline; text-decoration-color: var(--gm-line-2); text-underline-offset: 2px; }
+.mk-seller:hover { color: var(--ink); text-decoration-color: currentColor; }
+.mk-mark { align-self: flex-start; margin-top: 2px; padding: 1px 7px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); font: 500 10.5px var(--mono); letter-spacing: 0.04em; color: var(--ink-3); }
+.mk-mark.wish { border-color: var(--ink-2); color: var(--ink); }
+.mk-wantf { flex: none; }
+/* dans « Chercher » d'Échanges la barre d'outils est cachée (recherche commune) : seul le filtre « Mes manquantes / envies » reste */
+.ex-cherche .mk.mk-buy > .mk-tools { display: flex; margin-bottom: 12px; }
+.ex-cherche .mk.mk-buy > .mk-tools > :not(.mk-wantf) { display: none; }
+.cp-prof, .cm-who { color: inherit; text-decoration: none; }
+.cp-prof:hover, .cm-who:hover { text-decoration: underline; text-underline-offset: 2px; }
+.lb-scope { width: fit-content; max-width: 100%; margin: 0 0 12px; }
+.lb-scope[hidden] { display: none; }
+.lb-mine[role='button'] { cursor: pointer; }
+@keyframes lb-flash { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 25%, 60% { box-shadow: 0 0 0 2px #fff; } }
+.lb-flash { animation: lb-flash calc(var(--dur-emphatique) * 5) var(--ease-standard); }
+
+/* (v2.1.34) QOL boutique */
+.sum-ways { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 14px; margin-top: 10px; font: 500 12px var(--mono); letter-spacing: 0.04em; color: var(--ink-3); }
+.sum-ways-t { flex: 0 0 100%; text-align: center; text-transform: uppercase; letter-spacing: 0.12em; font-size: 11px; }
+.sum-ways .sw { min-height: 36px; color: var(--ink-2); font: inherit; text-decoration-color: var(--gm-line-2); }
+.sum-ways .sw:hover { color: var(--ink); text-decoration-color: currentColor; }
+.sum-actions .forge-dups { border-color: var(--gm-line-2); }
+.gm-same { align-self: flex-start; margin-bottom: 8px; border: 1px solid var(--gm-line-2); border-radius: var(--r-ctl); }

@@ -128,4 +128,5 @@ export const en: PartOf<typeof fr> = {
   'pf.sumColor': 'Color {name}',
   'pf.before': 'Before',
   'pf.all': 'All',
+  'pf.message': 'Message',
 };

@@ -9,6 +9,7 @@ import { feedText } from '../msgView';
 import { statusText } from '../../core/msgRefs';
 import { confirmTap, guarded } from './safety';
 import { REFERRAL, referralLink } from '../../core/referral';
+import { dmKey } from '../../core/chat';
 
 /**
  * AMIS (#/amis — retours live 02, point 8, lot A2) : demander quelqu'un en ami par son pseudo exact (ou depuis son
@@ -232,7 +233,12 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
     const seen = on ? `<span class="am-live">${tr('am.online')}</span>${f.status ? ` · ${esc(statusText(f.status))}` : ''}` : tr('am.seen', { when: ago(f.lastSeenAt, now) });
     const a = f.lastActivity;
     row.innerHTML = `<a class="am-who" href="${profileHref(f.userId)}" aria-label="${tr('am.profileOfOn', { name: esc(f.name), on: on ? tr('am.onlineSuffix') : '' })}">${ava(f, on)}<span class="am-txt"><b>${esc(f.name)}${ttl(f.userId)}</b><small class="am-seen">${seen}</small>${a ? `<small class="am-act"><i aria-hidden="true">${ACT_ICON[a.kind] ?? '•'}</i> ${esc(feedText(a))} · ${ago(a.createdAt, now)}</small>` : `<small class="am-act">${plural(f.packsOpened, 'booster ouvert', 'boosters ouverts')}</small>`}</span></a>
-      <span class="am-acts"><a class="btn-ghost am-prof" href="${profileHref(f.userId)}">${tr('am.profile')}</a><button class="btn-ghost am-rm" aria-label="${tr('am.removeTitle', { name: esc(f.name) })}">${tr('am.remove')}</button></span>`;
+      <span class="am-acts"><button class="btn-ghost am-msg" type="button" aria-label="${tr('am.msgTitle', { name: esc(f.name) })}">${tr('am.msg')}</button><a class="btn-ghost am-prof" href="${profileHref(f.userId)}">${tr('am.profile')}</a><button class="btn-ghost am-rm" aria-label="${tr('am.removeTitle', { name: esc(f.name) })}">${tr('am.remove')}</button></span>`;
+    // (v2.1.34) « Message » : ouvre le privé (clé calculée côté client, route #/chat/<conversation> déjà gérée par main.ts)
+    row.querySelector('.am-msg')!.addEventListener('click', () => {
+      const me = backend.state.user?.id;
+      if (me) navigate(`#/chat/${dmKey(me, f.userId)}`);
+    });
     const rm = row.querySelector<HTMLElement>('.am-rm')!;
     rm.addEventListener('click', () => {
       if (!confirmTap(rm, tr('am.removeQ'))) return;
@@ -345,7 +351,18 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
     }
   });
   refIn.addEventListener('focus', () => refIn.select());
+  // (v2.1.34) feuille de partage du téléphone quand elle existe ; sinon copie comme avant
+  const canShare = typeof navigator.share === 'function' && matchMedia('(pointer: coarse)').matches; // téléphone seulement (le PC garde la copie)
+  if (canShare) refCopy.textContent = tr('am.share');
   refCopy.addEventListener('click', async () => {
+    if (canShare) {
+      try {
+        await navigator.share({ text: tr('am.shareText'), url: refIn.value });
+        return;
+      } catch (e) {
+        if ((e as Error)?.name === 'AbortError') return; // feuille fermée sans partager
+      }
+    }
     try {
       await navigator.clipboard.writeText(refIn.value);
       toast(tr('am.copied'), 'ok');

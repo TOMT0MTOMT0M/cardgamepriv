@@ -26,6 +26,21 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '27 Nov', title: 'Handier everywhere: collection, market, forge, friends', tag: 'amélioré',
+        points: [
+          '📚 Collection: an “Almost done” row at the top of Albums, with the albums where you’re only 1 to 3 cards short (“−2” on the cover).',
+          '📚 Inside an album, tap the theme › family › album trail to jump back up. On phones, filters tuck behind a “Filters” button.',
+          '🛒 Market: each listing shows whether you already own the card or it’s on your wishlist, and a “Missing / Wishlist” filter sorts them.',
+          '👤 Tap a name (market seller, chat, “among players” under a card) to open their profile. A “Message” button on profiles and friends opens the private chat.',
+          '🏆 Leaderboard: tap “you are Nth” to jump to your row, and the “Friends” filter keeps only your friends, with their real ranks.',
+          '🔥 Forge: “Forge these duplicates” from the pack summary (nothing burns without your OK), and an “All 4★ and below” chip.',
+          '📦 Empty reserve: the summary shows how to get a booster right away (missions, streak, calendar, buying with coins).',
+          '🎰 Roulette: “Same bet as last time” puts your number and payment back in one tap.',
+          '🎁 Referral: “Share” opens your phone’s share sheet.',
+          '🎄 The Advent openings “Frozen tear” and “Christmas star” now play once picked.',
+        ],
+      },
+      {
         date: '26 Nov', title: 'Collection loads faster', tag: 'amélioré',
         points: [
           '⚡ The copy of your collection kept on this device now stays valid much longer, even after logging in again: the game reloads it in full less often at startup.',

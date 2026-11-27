@@ -31,4 +31,9 @@ export const en: PartOf<typeof fr> = {
   'lb.king': 'The main ranking: overall collection completion. First place gets the “Number one” title.',
   'lb.joining': ' <b>You join the season within the hour</b>: your cards count from then on.',
   'lb.mythics': '6★ & secrets',
+  'lb.scopeA': 'Who to show',
+  'lb.scopeAll': 'Everyone',
+  'lb.scopeFriends': 'Friends',
+  'lb.goMine': 'Jump to your row',
+  'lb.noFriends': 'None of your friends is ranked here.',
 };

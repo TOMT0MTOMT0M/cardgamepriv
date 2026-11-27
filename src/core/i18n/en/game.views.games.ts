@@ -145,6 +145,7 @@ export const en: PartOf<typeof fr> = {
   'gm.missing': 'You’re {n} coins short.',
   'gm.betFinal': 'Bet — no cancelling before the draw',
   'gm.betN': 'Bet{x}',
+  'gm.sameBet': '↻ Same bet as last time: no. {nums} · {what}',
   'gm.stays': 'Everything stays in the pot until the draw (carried over if nobody wins).',
   'gm.pickExact': { one: 'Pick exactly {n} {stars} card.', other: 'Pick exactly {n} {stars} cards.' },
   'gm.minusCoins': '−{n} coins',

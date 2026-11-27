@@ -65,5 +65,10 @@ export const fr = {
   'am.selected': 'Sélectionné : copie-le (Ctrl+C).',
   'am.ask': 'Demander',
   'am.countOnline': '{friends} · {n} en ligne',
+  // (v2.1.34) Message, partage du lien de parrainage
+  'am.msg': 'Message',
+  'am.msgTitle': 'Écrire en privé à {name}',
+  'am.share': 'Partager',
+  'am.shareText': 'Viens ouvrir des boosters avec moi sur Bébou !',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

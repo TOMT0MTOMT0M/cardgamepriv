@@ -21,7 +21,8 @@ import { offlinePanel } from '../offline';
 import { ACHIEVEMENTS, achievementDone } from '../../core/economy';
 import '../../core/i18n/fr/game.views.atelier'; // (« Accord … » sous les badges)
 import { STREAK_CYCLE } from '../../core/streak';
-import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, h, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
+import { dmKey } from '../../core/chat';
+import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, h, navigate, plural, popLayer, pushLayer, starsHtml, thumbUrl, toast, imageReportButton } from '../ui';
 import { feedText } from '../msgView';
 
 /**
@@ -281,7 +282,7 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
         ${acc ? `<div class="pf-accord" title="${esc(tr(`at.d.${acc.matter}` as MsgKey))}">${icon('link', 13)}<span>${tr('at.accordOn', { name: tr(`at.m.${acc.matter}` as MsgKey) })}</span></div>` : ''}
         <div class="pf-meta"><span class="pf-bio">${prof?.bio ? `« ${esc(prof.bio)} »` : me ? '<i>' + tr('pf.noInfo') + '</i>' : ''}</span>${prof?.joinedAt ? `<span class="pf-since" title="${tr('pf.since', { date: fmtDate(prof.joinedAt) })}">depuis ${fmtMonth(prof.joinedAt)}</span>` : ''}</div>
       </div>
-      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="${tr('pf.editInfo')}" title="${tr('pf.editInfo')}">${icon('pen', 14)}<span> ${tr('pf.info')}</span></button>` : `<button class="btn-primary pf-see-coll">${tr('pf.seeColl')}</button><a class="btn-ghost pf-trade" href="#/echanges">${tr('pf.offerTrade')}</a>${friendBtn(backend, who, name)}`}</div>`;
+      <div class="pf-actions">${me ? `<button class="btn-ghost pf-bio-edit" aria-label="${tr('pf.editInfo')}" title="${tr('pf.editInfo')}">${icon('pen', 14)}<span> ${tr('pf.info')}</span></button>` : `<button class="btn-primary pf-see-coll">${tr('pf.seeColl')}</button><a class="btn-ghost pf-trade" href="#/echanges">${tr('pf.offerTrade')}</a>${backend.state.user && who ? `<button class="btn-ghost pf-msg" type="button">${tr('pf.message')}</button>` : ''}${friendBtn(backend, who, name)}`}</div>`;
     hydrateStills(head);
     head.querySelector('.pf-see-coll')?.addEventListener('click', () => {
       tab = 'collection';
@@ -314,6 +315,11 @@ export function createProfileView(backend: GameBackend, shell: Shell, getViewer:
       }
       clearTimeout(armed);
       logout();
+    });
+    // (v2.1.34) « Message » : ouvre le privé avec ce joueur (#/chat/<conversation>, clé calculée côté client)
+    head.querySelector('.pf-msg')?.addEventListener('click', () => {
+      const meId = backend.state.user?.id;
+      if (meId && who) navigate(`#/chat/${dmKey(meId, who)}`);
     });
     head.querySelector('.pf-trade')?.addEventListener('click', () => sessionStorage.setItem('bebou.tradeWith', who));
   }

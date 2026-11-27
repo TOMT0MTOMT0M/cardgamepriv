@@ -127,5 +127,6 @@ export const fr = {
   'pf.sumColor': 'Couleur {name}',
   'pf.before': 'Avant',
   'pf.all': 'Toutes',
+  'pf.message': 'Message', // (v2.1.34) ouvre le privé
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

@@ -1151,6 +1151,8 @@ async function boot() {
   const failMsg = () =>
     navigator.onLine ? tr('page.failed') : tr('page.offline');
   let current = '';
+  /** (v2.1.34) adresse complète de la dernière page routée (`#/chat/<conv>` y revient, sous-page comprise) */
+  let lastHash = '';
   let routeGen = 0;
 
   /**
@@ -1196,7 +1198,8 @@ async function boot() {
     let [r = '', sub] = location.hash.replace(/^#\/?/, '').split('/') as [string?, string?];
     if (r === 'chat') {
       const conv = sub;
-      history.replaceState(history.state, '', current ? `#/${current}` : '#/');
+      // (v2.1.34) l'adresse complète de la page quittée (`#/profil/<id>` après « Message »), pas seulement sa clé
+      history.replaceState(history.state, '', lastHash || (current ? `#/${current}` : '#/'));
       void getChat().then((c) => c?.open(conv), () => undefined);
       if (routed) return;
       r = '';
@@ -1241,6 +1244,7 @@ async function boot() {
     if (changed && shell) shell.sfx.tick(1.15, 0.025); // changement de page : un tic à peine audible
     if (changed) haptics.pulse(6); // (audit 06/11) et une vibration très courte sous le doigt, comme les apps natives
     current = key;
+    lastHash = location.hash;
     if (arrived) navStamp = arrived;
     else {
       navStamp = `${Date.now().toString(36)}.${++stampSeq}`;

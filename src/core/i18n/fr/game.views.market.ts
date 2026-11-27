@@ -57,5 +57,15 @@ export const fr = {
   'mk.loginTrade': 'Connecte-toi pour proposer une carte.',
   'mk.tradeListed': '{name} est proposée à l’échange pour {h} h.',
   'mk.sellOrTrade': 'Vendre ou échanger une carte',
+  // (v2.1.34) vendeur cliquable, marques « je l’ai » / « envie », filtre
+  'mk.you': 'toi',
+  'mk.by': 'par',
+  'mk.sellerA': 'Voir le profil de {name}',
+  'mk.have': 'je l’ai',
+  'mk.wish': '♥ envie',
+  'mk.fA': 'Filtrer les annonces',
+  'mk.fAll': 'Toutes',
+  'mk.fMissing': 'Mes manquantes',
+  'mk.fWish': 'Mes envies',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

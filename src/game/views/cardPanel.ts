@@ -34,6 +34,8 @@ export const invalidatePanel = (cardId?: string) => (cardId ? cache.delete(cardI
 
 const starLbl = (r: RarityId) => (r === 'secret' ? 'Bébou' : `${rarity(r).rank + 1}★`); // i18n-ok
 const nameOf = (id: string) => catalogEntry(id)?.name ?? id;
+/** (v2.1.34) pseudo cliquable → profil du joueur (la fiche se ferme : navigate ferme les couches) */
+const plink = (id: string, name: string) => `<a class="cp-prof" href="#/profil/${encodeURIComponent(id)}">${esc(name)}</a>`;
 
 /** État de mes exemplaires d'une carte, vu des échanges. */
 export function myTradeState(backend: GameBackend, cardId: string, r: RarityId) {
@@ -205,6 +207,12 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
   const onKey = (ev: KeyboardEvent) => ev.key === 'Escape' && close();
   veil.addEventListener('click', (ev) => ev.target === veil && close());
   veil.querySelector('.ow-x')!.addEventListener('click', close);
+  veil.addEventListener('click', (ev) => {
+    const a = (ev.target as HTMLElement).closest<HTMLAnchorElement>('a.cp-prof');
+    if (!a) return;
+    ev.preventDefault();
+    navigate(a.getAttribute('href')!);
+  });
   document.addEventListener('keydown', onKey);
   document.body.append(veil);
   pushLayer(close);
@@ -240,7 +248,7 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
           if (await askFor(backend, { userId: o.userId, name: o.name }, card, btn)) close();
         });
       }
-      list.append(row(o.dup ? 'dup' : '', esc(o.name), o.dup ? `doublon · ${o.count} exemplaires` : o.count > 1 ? tr('cp.kept', { n: o.count }) : tr('cp.theirOnly'), o.online, btn));
+      list.append(row(o.dup ? 'dup' : '', plink(o.userId, o.name), o.dup ? `doublon · ${o.count} exemplaires` : o.count > 1 ? tr('cp.kept', { n: o.count }) : tr('cp.theirOnly'), o.online, btn));
     }
     // (13/11, retours Hugo) prix de référence : la moyenne des dernières ventes
     if (p.sold) list.append(h('p', 'cp-avg', `${tr('cp.avgT')} <span class="cp-c">${COIN_ICON}<b>${fmtCoins(p.sold.avg)}</b></span> <small>${tr('cp.avgD', { n: p.sold.n, last: fmtCoins(p.sold.last) })}</small>`));
@@ -260,7 +268,7 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
             toast(errMsg(err), 'err');
           }
         });
-        list.append(row('cp-sell', `<span class="cp-c">${COIN_ICON}<b>${fmtCoins(m.price)}</b></span>`, `${esc(m.name)} · n°${m.mintNumber}`, null, b));
+        list.append(row('cp-sell', `<span class="cp-c">${COIN_ICON}<b>${fmtCoins(m.price)}</b></span>`, `${plink(m.sellerId, m.name)} · n°${m.mintNumber}`, null, b));
       }
     }
     // qui la veut
@@ -275,7 +283,7 @@ export function showCardPanel(backend: GameBackend, cardId: string, hint?: strin
             if (await offerTo(backend, { userId: w.userId, name: w.name }, card, b)) close();
           });
         }
-        list.append(row('cp-wants', esc(w.name), me.proposable > 0 ? tr('cp.seeksDup') : tr('cp.seeks'), w.online, b));
+        list.append(row('cp-wants', plink(w.userId, w.name), me.proposable > 0 ? tr('cp.seeksDup') : tr('cp.seeks'), w.online, b));
       }
     }
   };

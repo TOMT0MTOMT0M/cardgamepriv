@@ -58,4 +58,13 @@ export const en: PartOf<typeof fr> = {
   'mk.loginTrade': 'Log in to put a card up for trade.',
   'mk.tradeListed': '{name} is up for trade for {h} h.',
   'mk.sellOrTrade': 'Sell or trade a card',
+  'mk.you': 'you',
+  'mk.by': 'by',
+  'mk.sellerA': 'See {name}’s profile',
+  'mk.have': 'owned',
+  'mk.wish': '♥ wish',
+  'mk.fA': 'Filter listings',
+  'mk.fAll': 'All',
+  'mk.fMissing': 'Missing',
+  'mk.fWish': 'Wishlist',
 };

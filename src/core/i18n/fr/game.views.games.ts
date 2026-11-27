@@ -144,6 +144,7 @@ export const fr = {
   'gm.missing': 'Il te manque {n} pièces.',
   'gm.betFinal': 'Miser — pas d\'annulation avant le tirage',
   'gm.betN': 'Miser{x}',
+  'gm.sameBet': '↻ Même mise que la dernière fois : n° {nums} · {what}', // (v2.1.34)
   'gm.stays': 'Tout reste au pot jusqu\'au tirage (reporté si personne ne gagne).',
   'gm.pickExact': { one: 'Choisis exactement {n} carte {stars}.', other: 'Choisis exactement {n} cartes {stars}.' },
   'gm.minusCoins': '−{n} pièces',
