@@ -160,6 +160,7 @@ export const fr = {
   'coll.pinnedAlbums': 'Épinglés',
   'coll.recentAlbums': 'Récents',
   'coll.almostDone': 'Presque finis',
+  'coll.missN': 'Plus que {n} à trouver',
   'coll.filters': 'Filtres',
   'coll.pinAlbum': 'Épingler en haut des albums',
   'coll.unpinAlbum': 'Ne plus épingler',

@@ -161,6 +161,7 @@ export const en: PartOf<typeof fr> = {
   'coll.pinnedAlbums': 'Pinned',
   'coll.recentAlbums': 'Recent',
   'coll.almostDone': 'Almost done',
+  'coll.missN': '{n} left to find',
   'coll.filters': 'Filters',
   'coll.pinAlbum': 'Pin to the top of the albums',
   'coll.unpinAlbum': 'Unpin',

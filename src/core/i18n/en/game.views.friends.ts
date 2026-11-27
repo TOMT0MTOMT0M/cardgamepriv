@@ -65,6 +65,8 @@ export const en: PartOf<typeof fr> = {
   'am.ref.got': '✓ you got your {n} boosters',
   'am.ref.welcome': '{name} is your sponsor: +{n} free boosters 🎁',
   'am.copied': 'Link copied: send it to your mates!',
+  'am.share': 'Share',
+  'am.shareText': 'Come open boosters with me on Bébou!',
   'am.selected': 'Selected: copy it (Ctrl+C).',
   'am.ask': 'Send request',
   'am.countOnline': '{friends} · {n} online',

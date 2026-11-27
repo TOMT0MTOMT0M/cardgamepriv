@@ -348,7 +348,18 @@ export function createFriendsView(backend: GameBackend, shell: Shell): FriendsVi
     }
   });
   refIn.addEventListener('focus', () => refIn.select());
+  // (v2.1.34, report) feuille de partage du téléphone quand elle existe ; sinon copie comme avant
+  const canShare = typeof navigator.share === 'function' && matchMedia('(pointer: coarse)').matches; // téléphone seulement (le PC garde la copie)
+  if (canShare) refCopy.textContent = tr('am.share');
   refCopy.addEventListener('click', async () => {
+    if (canShare) {
+      try {
+        await navigator.share({ text: tr('am.shareText'), url: refIn.value });
+        return;
+      } catch (e) {
+        if ((e as Error)?.name === 'AbortError') return; // feuille fermée sans partager
+      }
+    }
     try {
       await navigator.clipboard.writeText(refIn.value);
       toast(tr('am.copied'), 'ok');

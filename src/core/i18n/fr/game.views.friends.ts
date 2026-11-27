@@ -64,6 +64,9 @@ export const fr = {
   'am.ref.got': '✓ tu as reçu tes {n} boosters',
   'am.ref.welcome': '{name} est ton parrain : +{n} boosters offerts 🎁',
   'am.copied': 'Lien copié : envoie-le à tes potes !',
+  // (v2.1.34, report) partage du lien de parrainage
+  'am.share': 'Partager',
+  'am.shareText': 'Viens ouvrir des boosters avec moi sur Bébou !',
   'am.selected': 'Sélectionné : copie-le (Ctrl+C).',
   'am.ask': 'Demander',
   'am.countOnline': '{friends} · {n} en ligne',

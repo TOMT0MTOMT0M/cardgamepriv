@@ -32,6 +32,9 @@ import { duelMonster } from '../scenes/duelMonsters';
 import { abortMythic, mythicFamily, playMythicPrelude, prepareMythic } from '../mythic';
 import { clearGod, playGodIntro } from '../godPack';
 import { spreadSeries } from '../series';
+import { ADVENT_DAYS, adventDay, adventReward, adventWaiting } from '../../core/avent';
+import { missionsReady } from '../../core/missions';
+import { STREAK_REWARD, streakClaimable, touchStreak } from '../../core/streak';
 
 /** Indications adaptées à l'appareil : « Touche » au doigt, « Clique » à la souris. */
 const TOUCH = isTouch();
@@ -1929,6 +1932,24 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     fanBadges.hidden = true;
   }
 
+  /** (v2.1.34, report) pistes pour regagner un booster quand la réserve est vide (3 au plus, chacune ouvre l'écran concerné) */
+  function boosterWays(u: NonNullable<typeof backend.state.user>) {
+    const out: Array<{ id: string; text: string; act: () => void }> = [];
+    const eco = backend.eco.snapshot;
+    const header = (sel: string) => () => document.querySelector<HTMLElement>(sel)?.click(); // panneaux de l'en-tête (missions, connexion)
+    const day = adventDay(Date.now());
+    const doors = adventWaiting(day, eco?.advent?.opened ?? []).filter((d) => d <= ADVENT_DAYS && (adventReward(d).packs || adventReward(d).god));
+    if (doors.length) out.push({ id: 'advent', text: tr('shop.wayAdvent', { n: doors.length }), act: () => (back(), go('evenement')) });
+    const ready = missionsReady(backend.state.missions);
+    if (ready) out.push({ id: 'msn', text: tr('shop.wayMissions', { n: ready }), act: header('.msn-btn') });
+    if (streakClaimable(touchStreak(u.streak, Date.now()) ?? u.streak)) out.push({ id: 'streak', text: tr('shop.wayStreak', { n: STREAK_REWARD }), act: header('.st-btn') });
+    if (eco && !eco.calendar.claimed && eco.calendar.reward.packs > 0) out.push({ id: 'cal', text: tr('shop.wayCal', { n: eco.calendar.reward.packs }), act: header('.st-btn') });
+    if (eco && eco.packShop.left > 0 && eco.coins >= eco.packShop.price) out.push({ id: 'buy', text: tr('shop.wayBuy', { n: fmtN(eco.packShop.price) }), act: () => (back(), sheet.open(selected)) });
+    const todo = backend.state.missions?.list.filter((m) => !m.claimed && m.progress < m.target).length ?? 0;
+    if (!ready && todo) out.push({ id: 'msn2', text: tr('shop.wayMissionsTodo', { n: todo }), act: header('.msn-btn') });
+    return out.slice(0, 3);
+  }
+
   /** Récapitulatif : ligne résumé compacte (nouvelles · doublons · meilleure carte · compteur) + 3 boutons ; les cartes restent dans l'éventail 3D. */
   function showSummary() {
     // (audit UX2-05) seuls les boosters vraiment crédités comptent ; un booster montré mais pas crédité (réseau) est
@@ -1957,6 +1978,8 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
     summary.classList.toggle('pending', !!pend);
     const again = u ? Math.min(liveRegen(u).balance, packs.length) : 0;
     const bal = u ? liveRegen(u).balance : 0;
+    // (v2.1.34, report) réserve vide : des pistes pour regagner un booster, seulement celles qui sont vraiment disponibles
+    const ways = u && bal === 0 && !pend ? boosterWays(u) : [];
     summary.innerHTML = `
       ${pend ? `<div class="sum-warn" role="alert">${tr('shop.notCredited', { what: credited.length ? tr('shop.batchPending', { i: credited.length + 1, n: batch?.total ?? 1 }) : tr('shop.onePending') })}</div>` : ''}
       <div class="sum-line">
@@ -1970,10 +1993,12 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
       ${grid ? '<div class="sum-cards"></div>' : ''}
       <div class="sum-actions">
         ${pend ? '<button class="btn-primary retry">' + tr('shop.retrySave') + '</button>' : u && bal > 0 ? `<button class="btn-primary again" data-n="${again}">${again > 1 ? tr('shop.againN', { n: again }) : tr('shop.againOne')}<small>${tr('shop.inReserve', { n: bal })}</small></button>` : u ? `<span class="muted next-pack">${tr('shop.nextIn', { time: fmtCountdown((liveRegen(u).nextAt ?? Date.now()) - Date.now()) })}</span>` : ''}
-        ${dups > 0 ? `<button class="btn-ghost forge-dups">${tr('shop.forgeDups', { n: dups })}</button>` : ''}
+        ${dups > 0 && u && !pend ? `<button class="btn-ghost forge-dups">${tr('shop.forgeDups', { n: dups })}</button>` : ''}
         <button class="btn-ghost coll">${fresh ? tr('shop.myNew') : dups === all.length ? tr('shop.contracts') : tr('shop.myColl')}</button>
         <button class="btn-ghost back">${tr('nav.shop')}</button>
-      </div>`;
+      </div>
+      ${ways.length ? `<div class="sum-ways"><span class="sum-ways-t">${tr('shop.waysT')}</span>${ways.map((w) => `<button class="linkish sw" data-w="${w.id}">${w.text}</button>`).join('')}</div>` : ''}`;
+    for (const w of ways) summary.querySelector(`.sw[data-w="${w.id}"]`)?.addEventListener('click', w.act);
     if (best) paintSummaryBg(best, req);
     // règle pic-fin (réf. motion §1.6 / §7.4) : la barre d'album progresse sous les yeux du joueur (600 ms), avec un tic
     const prog = summary.querySelector<HTMLElement>('.sum-prog');

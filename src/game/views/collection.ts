@@ -1007,7 +1007,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
     const on = pins.includes(s.id);
     return `<span class="al-star${on ? ' on' : ''}" role="button" tabindex="0" aria-pressed="${on}" aria-label="${tr(on ? 'coll.unpinA' : 'coll.pinA', { name: esc(s.label) })}" title="${tr(on ? 'coll.unpinAlbum' : 'coll.pinAlbum')}">${on ? '★' : '☆'}</span>`;
   };
-  function albumTile(s: SubTheme, mine: Map<string, PlayerCard>, showGrp: boolean): HTMLElement {
+  function albumTile(s: SubTheme, mine: Map<string, PlayerCard>, showGrp: boolean, miss = 0): HTMLElement {
     const st = albumStat(s, mine);
     const soon = !s.cards.length;
     const cover = soon ? null : albumCover(s, mine);
@@ -1018,7 +1018,7 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
         <span class="al-cover">${cover ? `<img loading="lazy" decoding="async" alt="" src="${thumbUrl(cover.entry)}">` : `<span class="al-ph">${esc((s.code || s.label).slice(0, 3).toUpperCase())}</span>`}${cover?.manual ? `<span class="al-pin" title="${tr('coll.coverMine')}">📌</span>` : ''}${soon ? '<span class="al-soon">' + tr('common.soonCaps') + '</span>' : ''}</span>
         <span class="al-name">${esc(s.label)}</span>
         ${s.group && showGrp ? `<span class="al-grp">${esc(s.group.label)}</span>` : ''}
-        <span class="al-n">${soon ? tr('coll.inPrep') : `${fmtN(st.have)} / ${fmtN(st.total)}`}</span>
+        <span class="al-n">${soon ? tr('coll.inPrep') : `${fmtN(st.have)} / ${fmtN(st.total)}`}${miss ? ` <b class="al-miss" title="${tr('coll.missN', { n: miss })}">−${miss}</b>` : ''}</span>
         <span class="al-bar"><i style="width:${Math.max(0, st.pct) * 100}%"></i></span>${soon ? '' : pinHtml(s)}`;
     a.disabled = soon;
     a.title = soon ? tr('coll.soonOf', { label: s.label }) : tr('coll.albumOf', { label: s.label, have: fmtN(st.have), total: fmtN(st.total) });
@@ -1226,7 +1226,8 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       const sec = h('section', 'al-quick');
       sec.append(h('h3', 'al-th', `<b>${label}</b>`));
       const row = h('div', 'al-row');
-      for (const s of list) row.append(albumTile(s, mine, true));
+      // (v2.1.34, report) « −N » sur les pochettes de la rangée « Presque finis » seulement
+      for (const s of list) row.append(albumTile(s, mine, true, list === almost ? albumStat(s, mine).total - albumStat(s, mine).have : 0));
       sec.append(row);
       frag.append(sec);
     }

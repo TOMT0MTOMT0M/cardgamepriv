@@ -394,6 +394,12 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
 /* (13/11, retours Hugo) deux usages : « Chercher » (acheter) et « Vendre · Échanger » (mettre une carte, mes ventes) */
 .mk-sell > :is(.mk-tools, .mk-mytools, .mk-g-open, .mk-empty) { display: none !important; }
 /* (V3) « je l'ai / ♥ envie » + filtres « Mes manquantes / Mes envies » : filets seulement, aucune couleur */
+/* (v2.1.34, report) récap, réserve vide : pistes pour regagner un booster ; « −N » des pochettes presque finies */
+.sum-ways { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 14px; margin-top: 10px; font: 500 12px var(--mono); letter-spacing: 0.04em; color: var(--ink-3); }
+.sum-ways-t { flex: 0 0 100%; text-align: center; text-transform: uppercase; letter-spacing: 0.12em; font-size: 11px; }
+.sum-ways .sw { min-height: 36px; color: var(--ink-2); font: inherit; text-decoration-color: var(--gm-line-2); }
+.sum-ways .sw:hover { color: var(--ink); text-decoration-color: currentColor; }
+.al-miss { margin-left: 4px; font-weight: 600; color: #fff; }
 .mk-mytools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .mk-mytools .chip, .lb-filt .chip { --rc: var(--ink-2); color: var(--ink-2); } /* (.chip borde avec --rc, posée d'habitude par la rareté) */
 .mk-mytools .chip.on { border-color: #fff; background: rgba(255, 255, 255, 0.12); color: #fff; }

@@ -48,8 +48,6 @@ export const UPDATES: UpdateMonth[] = [
           '❄️ Cosmétiques de Noël à gagner en ouvrant les cases : un badge, deux titres et un cadre.',
           '♛ Titres uniques : le premier joueur qui complète Valorant, Naruto, Pokémon ou League of Legends remporte un titre que personne d’autre n’aura (Radiant, Hokage, Maître Pokémon, Challenger). Il s’affiche à côté de son pseudo, et tous les titres sont dans Succès → Succès d’albums.',
           '🎡 Roulette : la roue et le tapis sont en rouge, noir et une case verte. En payant le double, pose une couleur sur ton numéro : si personne n’a le numéro sorti, sa couleur rafle le pot.',
-          '🧭 Collection plus simple : une rangée « Presque finis » (les albums à qui il manque 1 à 3 cartes), un fil thème › famille › album pour remonter d’un toucher, et au téléphone les filtres rangés derrière un bouton « Filtres ».',
-          '👆 Raccourcis : « Forger ces doublons » à la fin d’une ouverture, « Toutes les 4★ et moins » dans la Forge, « Même mise que la dernière fois » à la roulette, « Message » sur un profil et sur un ami. Un nom de joueur ouvre son profil dans le chat, au marché et sur une carte. Au marché, « je l’ai » et « ♥ envie » sur les annonces, et les filtres « Mes manquantes » et « Mes envies ». Au classement, toucher « Tu es Xe » saute à ta ligne, et un filtre « Amis ».',
         ],
       },
       {
@@ -70,6 +68,21 @@ export const UPDATES: UpdateMonth[] = [
           '🔊 Son et ouverture : un son tout neuf, plus doux, et une déchirure du booster plus vraie.',
           '🔔 Notifications : réserve pleine, échanges, amis, chat. Sur iPhone, ajoute d’abord le jeu à l’écran d’accueil.',
           '🌍 English : le jeu passe en anglais tout seul si ton téléphone ou ton PC n’est pas en français (bouton FR | EN à côté du son).',
+        ],
+      },
+      {
+        date: '27 nov.', title: 'Plus pratique partout : collection, marché, forge, amis', tag: 'amélioré',
+        points: [
+          '📚 Collection : une rangée « Presque finis » en tête des albums, avec ceux où il ne te manque que 1 à 3 cartes (« −2 » sur la pochette).',
+          '📚 Dans un album, le fil thème › famille › album se touche pour remonter d’un coup. Au téléphone, les filtres se rangent derrière un bouton « Filtres ».',
+          '🛒 Marché : chaque annonce te dit si tu as déjà la carte ou si elle est dans tes envies, et un filtre « Mes manquantes / Mes envies » les trie.',
+          '👤 Touche un pseudo (vendeur au marché, chat, « chez les joueurs » sous une carte) pour ouvrir son profil. Un bouton « Message » sur les profils et tes amis ouvre la conversation privée.',
+          '🏆 Classement : touche « tu es Xe » pour aller à ta ligne, et le filtre « Amis » ne garde que tes amis, avec leurs vrais rangs.',
+          '🔥 Forge : « Forger ces doublons » depuis le récap d’ouverture (rien n’est brûlé sans ton OK), et une puce « Toutes les 4★ et moins ».',
+          '📦 Réserve vide : le récap te montre comment regagner un booster tout de suite (missions, série, calendrier, achat en pièces).',
+          '🎰 Roulette : « Même mise que la dernière fois » remet ton numéro et ton paiement en un toucher.',
+          '🎁 Parrainage : « Partager » ouvre la feuille de partage de ton téléphone.',
+          '🎄 Les ouvertures « Déchirure glacée » et « Étoile de Noël » du calendrier seront bien jouées une fois choisies.',
         ],
       },
       {

@@ -13,8 +13,6 @@ export const UPDATES_EN: UpdateMonth[] = [
           '❄️ Christmas cosmetics to win by opening doors: a badge, two titles and a frame.',
           '♛ Unique titles: the first player to complete Valorant, Naruto, Pokémon or League of Legends wins a title nobody else will ever get (Radiant, Hokage, Pokémon Master, Challenger). It shows next to their name, and every title is in Achievements → Album achievements.',
           '🎡 Roulette: the wheel and the mat are now red, black and a single green. Pay double to put a colour on your number: if nobody has the number that comes up, its colour takes the pot.',
-          '🧭 Simpler collection: an “Almost done” row (albums missing 1 to 3 cards), a theme › family › album trail to go back up in one tap, and on phones the filters tucked behind a “Filters” button.',
-          '👆 Shortcuts: “Forge these duplicates” at the end of an opening, “All 4★ and below” in the Forge, “Same bet as last time” at the roulette, “Message” on a profile and on a friend. A player’s name opens their profile in the chat, the market and on a card. In the market, “✓ owned” and “♥ wanted” on listings, plus “My missing” and “My wishes” filters. In the ranking, tap “You are Xth” to jump to your line, plus a “Friends” filter.',
         ],
       },
       {
@@ -35,6 +33,21 @@ export const UPDATES_EN: UpdateMonth[] = [
           '🔊 Sound and opening: brand-new, softer sound and a more real booster tear.',
           '🔔 Notifications: full reserve, trades, friends, chat. On iPhone, add the game to your home screen first.',
           '🌍 English: the game switches to English on its own if your phone or PC isn’t in French (FR | EN button next to the sound).',
+        ],
+      },
+      {
+        date: '27 Nov', title: 'Handier everywhere: collection, market, forge, friends', tag: 'amélioré',
+        points: [
+          '📚 Collection: an “Almost done” row at the top of Albums, with the albums where you’re only 1 to 3 cards short (“−2” on the cover).',
+          '📚 Inside an album, tap the theme › family › album trail to jump back up. On phones, filters tuck behind a “Filters” button.',
+          '🛒 Market: each listing shows whether you already own the card or it’s on your wishlist, and a “Missing / Wishlist” filter sorts them.',
+          '👤 Tap a name (market seller, chat, “among players” under a card) to open their profile. A “Message” button on profiles and friends opens the private chat.',
+          '🏆 Leaderboard: tap “you are Nth” to jump to your row, and the “Friends” filter keeps only your friends, with their real ranks.',
+          '🔥 Forge: “Forge these duplicates” from the pack summary (nothing burns without your OK), and an “All 4★ and below” chip.',
+          '📦 Empty reserve: the summary shows how to get a booster right away (missions, streak, calendar, buying with coins).',
+          '🎰 Roulette: “Same bet as last time” puts your number and payment back in one tap.',
+          '🎁 Referral: “Share” opens your phone’s share sheet.',
+          '🎄 The Advent openings “Frozen tear” and “Christmas star” now play once picked.',
         ],
       },
       {
