@@ -133,7 +133,8 @@ export async function askFor(backend: GameBackend, to: { userId: string; name: s
     const p = backend.quickTrade(to.userId, card, give);
     const r = await (btn ? busyButton(btn, p) : p);
     invalidatePanel(card.cardId);
-    toast(tr('cp.reqSent', { to: to.name, get: nameOf(r.get.cardId), give: nameOf(r.give.cardId) }), 'ok');
+    // (v2.1.38) la carte proposée en échange est une de ses envies (carte, album ou famille) : on le dit
+    toast(tr(r.theyWant ? 'cp.reqSentWish' : 'cp.reqSent', { to: to.name, get: nameOf(r.get.cardId), give: nameOf(r.give.cardId) }), 'ok');
     return true;
   } catch (e) {
     const m = errMsg(e);
@@ -150,7 +151,7 @@ export async function offerTo(backend: GameBackend, to: { userId: string; name: 
     const p = backend.quickTrade(to.userId, undefined, card);
     const r = await (btn ? busyButton(btn, p) : p);
     invalidatePanel(card.cardId);
-    toast(tr('cp.offered', { to: to.name, give: nameOf(r.give.cardId), get: nameOf(r.get.cardId) }), 'ok');
+    toast(tr(r.iWant ? 'cp.offeredWish' : 'cp.offered', { to: to.name, give: nameOf(r.give.cardId), get: nameOf(r.get.cardId) }), 'ok');
     return true;
   } catch (e) {
     toast(errMsg(e), 'err');

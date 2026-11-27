@@ -71,6 +71,13 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        date: '27 nov.', title: 'Échanges en un toucher : ses envies d’abord', tag: 'amélioré',
+        points: [
+          '♥ « Demander » une carte à un joueur lui propose en priorité une carte qu’il cherche : celles de sa liste d’envies, et maintenant aussi celles des albums et familles qu’il veut en entier. Le message te le dit.',
+          '🤝 Pareil dans « Pour toi », et quand on te demande une carte, « Choisir autre chose » te montre d’abord celles de tes albums voulus.',
+        ],
+      },
+      {
         date: '27 nov.', title: 'Au téléphone, les boutons restent à leur place', tag: 'corrigé',
         points: [
           '👤 Profil d’un joueur : « Voir sa collection », « Proposer un échange », « Message » et « Ajouter en ami » se rangent sous son pseudo au lieu de déborder sur sa bannière (et sur ordinateur, son pseudo n’est plus coupé).',

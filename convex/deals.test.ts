@@ -6,6 +6,7 @@ import { api } from './_generated/api';
 import schema from './schema';
 import type { Id } from './_generated/dataModel';
 import { CATALOG_CARDS } from './cardsCatalog';
+import { famKeysOfCard } from '../src/core/wishFams';
 
 const modules = import.meta.glob(['./**/*.ts', './**/*.js', '!./**/*.test.ts', '!./**/*.d.ts']);
 async function setup() {
@@ -166,6 +167,19 @@ describe('Demander en un toucher', () => {
     expect(r.get.cardId).toBe(A);
     // carol n'a aucun doublon : rien à recevoir d'elle
     await expect(t.mutation(api.deals.quick, { sessionToken: bob.token, toUserId: carol.userId, give: { cardId: A, rarity: 'common' } })).rejects.toThrow(/⟦(contracts\.5|deals\.7|deals\.8|economy\.13)[⟧{]/);
+  });
+  test('(v2.1.38) ses albums / familles voulus passent avant le reste, et le demandeur le sait', async () => {
+    const { t, alice, bob } = await setup();
+    const fam = (id: string) => famKeysOfCard(id)[0];
+    const W = COMMONS.find((id) => fam(id) && fam(id) !== fam(A) && fam(id) !== fam(B))!;
+    await give(t, bob.userId, A, 2);
+    await give(t, alice.userId, B, 3); // plus d'exemplaires : passerait en premier sans les envies
+    await give(t, alice.userId, W, 2);
+    await t.run((ctx) => ctx.db.patch(bob.userId, { wishFams: [fam(W)] }));
+    const r = await t.mutation(api.deals.quick, { sessionToken: alice.token, toUserId: bob.userId, get: { cardId: A, rarity: 'common' } });
+    expect(r.give.cardId).toBe(W);
+    expect(r.theyWant).toBe(true);
+    expect(r.iWant).toBe(false);
   });
   test('étoiles différentes refusées', async () => {
     const { t, alice, bob } = await scene();

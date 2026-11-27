@@ -484,7 +484,7 @@ export interface GameBackend {
   /** recoupement à la demande : échanges prêts + « ils cherchent tes doublons » */
   forYou(): Promise<ForYou>;
   /** « Demander » en un toucher (1 contre 1, même étoile) : le côté absent est choisi par le serveur */
-  quickTrade(toId: string, get?: DealCard, give?: DealCard): Promise<{ get: DealCard; give: DealCard }>;
+  quickTrade(toId: string, get?: DealCard, give?: DealCard): Promise<{ get: DealCard; give: DealCard; /** (v2.1.38) ce que je donne est dans ses envies */ theyWant?: boolean; /** ce que je reçois est dans les miennes */ iWant?: boolean }>;
   /** le demandeur change sa contrepartie tant que l'autre n'a pas répondu */
   swapTradeGive(tradeId: string, cardId: string): Promise<void>;
   /** « Choisir autre chose » : les doublons proposables du demandeur, même étoile */

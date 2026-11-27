@@ -36,6 +36,13 @@ export const UPDATES_EN: UpdateMonth[] = [
         ],
       },
       {
+        date: '27 Nov', title: 'One-tap trades: their wishes first', tag: 'amélioré',
+        points: [
+          '♥ “Ask” for a card from a player now offers them a card they’re looking for first: from their wishlist, and now also from the albums and families they want whole. The message tells you so.',
+          '🤝 Same in “For you”, and when someone asks you for a card, “Pick something else” shows cards from your wanted albums first.',
+        ],
+      },
+      {
         date: '27 Nov', title: 'On phones, buttons stay in place', tag: 'corrigé',
         points: [
           '👤 Player profile: “See their collection”, “Offer a trade”, “Message” and “Add friend” now sit under their name instead of spilling over their banner (and on computers, their name is no longer cut off).',

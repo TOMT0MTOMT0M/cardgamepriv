@@ -25,9 +25,11 @@ export const fr = {
   'cp.wanters': { one: '{n} la veut', other: '{n} la veulent' },
   'cp.playersGo': 'Chez les joueurs ›',
   'cp.reqSent': 'Demande envoyée à {to} : {get} contre {give}. À suivre dans Marché › En cours.',
+  'cp.reqSentWish': 'Demande envoyée à {to} : {get} contre {give}, une de ses envies ♥. À suivre dans Marché › En cours.', // (v2.1.38)
   'cp.soldAvg': 'vendue en moyenne',
   'cp.openComposer': '{msg}. On ouvre le composeur.',
   'cp.offered': 'Proposé à {to} : {give} contre {get}.',
+  'cp.offeredWish': 'Proposé à {to} : {give} contre {get}, une de tes envies ♥.', // (v2.1.38)
   'cp.playersH': 'Chez les joueurs',
   'cp.youHave': 'Tu en as {n}{line}',
   'cp.notYet': 'Pas encore dans ta collection',

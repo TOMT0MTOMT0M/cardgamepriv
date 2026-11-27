@@ -298,7 +298,7 @@ export function createOnlineBackend(): GameBackend {
     },
     async quickTrade(toId, get, give) {
       const r = await net.call(api.deals.quick, { toUserId: toId as Id<'users'>, get, give });
-      return { get: r.get, give: r.give };
+      return { get: r.get, give: r.give, theyWant: r.theyWant, iWant: r.iWant };
     },
     async swapTradeGive(tradeId, cardId) {
       await net.call(api.deals.swapGive, { tradeId: tradeId as Id<'trades'>, cardId });
