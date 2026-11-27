@@ -128,7 +128,15 @@ const TAU = Math.PI * 2;
 const CH = (PACK.crimp / PACK.h) * PH;
 const DISPLAY = FONT_TEXT; // Bold Frame (800 = Bold Frame Two)
 
-/** textes des étiquettes, FR et EN (maquette du labo : passeront par les clés i18n à l'intégration) */
+/**
+ * Textes des étiquettes, FR et EN. (V3, ménage 27/11) GARDÉS ICI, pas dans les dictionnaires i18n, exprès :
+ *  - ce ne sont pas des textes d'interface mais du dessin : chaque mot est calé à la main dans son autocollant (corps,
+ *    approche, largeur max) — une traduction changée dans un dictionnaire déborderait sans que rien ne le signale ;
+ *  - la langue est un PARAMÈTRE (`L`) : le labo 047 montre FR ou EN quelle que soit la langue de l'interface, alors que
+ *    `t()` ne sert que la langue active (le dictionnaire anglais n'est même pas chargé sur un jeu en français) ;
+ *  - le jeu passe déjà la langue du joueur (`gameSachetArt(…, lang())`, opening.ts) : rien n'est en dur côté joueur.
+ * Toile refaite à chaque chargement (aucun cache versionné) : changer un texte ici change le rendu au prochain lancement.
+ */
 const TX = {
   cartes: { fr: 'CARTES', en: 'CARDS' }, // i18n-ok
   cartesMin: { fr: '5 cartes', en: '5 cards' }, // i18n-ok

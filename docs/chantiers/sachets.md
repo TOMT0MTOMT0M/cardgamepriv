@@ -38,7 +38,7 @@ Cadence : plafonnée par le jeu (≈ 43 images rendues/s au repos, ≈ 74/s roue
 
 ## Reste
 - [ ] Avis de Tom et Hugo au téléphone.
-- [ ] Textes des autocollants (« 5 cartes », « SÉRIE · … ») : en FR / EN dans `packSticker.ts` (table `TX`), pas dans les dictionnaires i18n.
+- [x] (ménage V3, 27/11 — décidé : on les laisse) Textes des autocollants (« 5 cartes », « SÉRIE · … ») : restent en FR / EN dans `packSticker.ts` (table `TX`). Raisons : dessin calé à la main mot par mot (une traduction changée ailleurs déborderait) ; langue passée en paramètre (le labo 047 montre FR ou EN quelle que soit l'interface, `t()` ne sert que la langue active) ; le jeu passe déjà la langue du joueur (`gameSachetArt`). Pas dans un worker, pas de cache versionné (toile refaite à chaque chargement). Rendu inchangé. Détail : `menage-v3.md`.
 - [ ] Événements déjà enregistrés en prod (violet, fuchsia…) : à repasser sur un thème dans le dashboard le jour de la mise en ligne de la V3.
 
 ## Pièges
