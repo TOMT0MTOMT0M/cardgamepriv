@@ -23,7 +23,6 @@ import { en as p_game_views_profile } from './en/game.views.profile';
 import { en as p_game_views_collection } from './en/game.views.collection';
 import { en as p_game_views_trades } from './en/game.views.trades';
 import { en as p_game_views_cardPanel } from './en/game.views.cardPanel';
-import { en as p_game_views_contracts } from './en/game.views.contracts';
 import { en as p_game_views_succes } from './en/game.views.succes';
 import { en as p_game_views_guide } from './en/game.views.guide';
 import { en as p_game_views_suggestions } from './en/game.views.suggestions';
@@ -61,7 +60,6 @@ export const en: Dict = {
   ...p_game_views_collection,
   ...p_game_views_trades,
   ...p_game_views_cardPanel,
-  ...p_game_views_contracts,
   ...p_game_views_succes,
   ...p_game_views_guide,
   ...p_game_views_suggestions,
@@ -90,7 +88,6 @@ export const en: Dict = {
   // ───── browser tab titles ─────
   'title.shop': 'Bébou — shop',
   'title.collection': 'Bébou — collection',
-  'title.contrats': 'Bébou — contracts',
   'title.echanges': 'Bébou — trades',
   'title.amis': 'Bébou — friends',
   'title.profil': 'Bébou — profile',
@@ -131,7 +128,6 @@ export const en: Dict = {
   'boot.fx': 'getting the effects ready…',
   'boot.tip1': 'Tip: hold, swipe or tap the booster: each pack opens its own way.',
   'boot.tip2': 'A secret card might be hiding in the Bebou Pack…',
-  'boot.tip3': 'Your duplicates are worth gold: burn them in a contract or trade them.',
   'boot.tip3b': 'Your duplicates are worth gold: forge them for coins or sell them on the market.',
   'boot.tip4': 'A new booster every 5 minutes, up to 15 in reserve.',
   'boot.tip5': 'Tap a card in your collection to see it big and spin it around.',
@@ -370,7 +366,6 @@ export const en: Dict = {
   'shop.saveFailed': 'Couldn’t save ({err})',
   'shop.dupWord': { one: 'duplicate', other: 'duplicates' },
   'shop.best': 'best',
-  'shop.contracts': 'Contracts',
   'shop.newBang': 'NEW!',
 
   // ───── src/game/views/shop.ts (à la main) ─────
@@ -398,7 +393,6 @@ export const en: Dict = {
   'plural.exemplaire brûlable': { one: '{n} burnable copy', other: '{n} burnable copies' },
   'plural.duel ouvert': { one: '{n} open duel', other: '{n} open duels' },
   'plural.de tes envies': { one: '{n} of your wishes', other: '{n} of your wishes' },
-  'plural.contrat possible': { one: '{n} possible contract', other: '{n} possible contracts' },
   'plural.booster ouvert': { one: '{n} booster opened', other: '{n} boosters opened' },
   'plural.badge': { one: '{n} badge', other: '{n} badges' },
   'plural.ami invité': { one: '{n} friend invited', other: '{n} friends invited' },
@@ -506,7 +500,6 @@ export const en: Dict = {
   'coll.albums': 'Albums',
   'coll.binders': 'Binders',
   'coll.forge': 'Forge',
-  'coll.contracts': 'Contracts',
   'chat.me': 'You',
 
   // ───── src/game/ui.ts (à la main) ─────

@@ -6,7 +6,6 @@ import { demoEvent, eventLive, type PackEvent } from '../core/events';
 import { SURVEYS, cleanSurvey, surveyFilled, type SurveyAnswer } from '../core/survey';
 import { rng } from '../core/ease';
 import { applyRegen, fmtCountdown } from '../core/packRegen';
-import { contractProblem, contractTarget, rollContract } from '../core/contracts';
 import { catalogEntry, BEBOU_PACK, themeById } from '../core/sets/themes';
 import { MARKET_MAX_OPEN, WANTED_CARDS_MAX, marketAdvised, marketMax, marketProblem, marketSuggested } from '../core/market';
 import { DEAL_ALTS, DEALS_MAX, PICK_MAX, THEY_WANT_MAX, proposable, rankGives, soldStats, type CardPanel, type Deal, type TheyWant } from '../core/deals';
@@ -40,7 +39,7 @@ function demoMedia(): { avatarMedia?: string; bannerMedia?: string } {
     return {};
   }
 }
-import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, contractsRetired, emptyEcon, visibleAchievements, type EconState } from '../core/economy';
+import { ACHIEVEMENTS, achievementDone, achievementStats, cardsValue, emptyEcon, visibleAchievements, type EconState } from '../core/economy';
 import { ADVENT_YEAR } from '../core/avent';
 import { packCapOf } from '../core/abo';
 import { THEMES as GAME_THEMES } from '../core/sets/themes';
@@ -1601,28 +1600,6 @@ export function createLocalBackend(): GameBackend {
       if (!l || !listingLive(l)) throw new Error(fe('listings.11'));
       boardConclude(l, o, o.counter!.give, o.counter!.want);
       sync();
-    },
-    async signContract(rarity, items) {
-      await delay(150);
-      // (v2.1.40) comme le serveur : plus de contrat à partir du 01/12 0 h (Paris)
-      if (contractsRetired(Date.now())) throw new Error(fe('contracts.8'));
-      const target = contractTarget(rarity) as RarityId | null;
-      // (verrouillage, comme le serveur : une carte engagée — échange en attente, annonce, offre — ne se brûle pas)
-      const locked = lockedCards(state);
-      const problem = contractProblem(rarity, items, (id) => Math.max(0, (save.inv[cardKey({ cardId: id, rarity })]?.count ?? 0) - 1 - (locked.get(cardKey({ cardId: id, rarity })) ?? 0)));
-      if (!target || problem) throw new Error(problem ?? 'Contrat invalide.');
-      for (const it of items) remove(save.inv, { cardId: it.cardId, rarity, count: it.count });
-      const ownedIds = new Set(Object.values(save.inv).map((c) => c.cardId));
-      const card = rollContract(rarity, items, (id) => ownedIds.has(id));
-      const k = cardKey({ cardId: card.id, rarity: target });
-      const mint = (save.mints[k] = (save.mints[k] ?? 0) + 1);
-      add(save.inv, card.id, target, 1, mint);
-      bump({ type: 'contract' });
-      eco.hooks.onContract();
-      save.contracts_done = (save.contracts_done ?? 0) + 1;
-      feed('contract', fm('f.dContract', { card: card.name, cardId: card.id, rarity: rarityOf(target).label, rarityId: target, mint }), target, { id: card.id, name: card.name, mint });
-      sync();
-      return { cardId: card.id, cardName: card.name, rarity: target, mintNumber: mint, isNew: !ownedIds.has(card.id) };
     },
   };
 }

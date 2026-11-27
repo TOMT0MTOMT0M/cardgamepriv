@@ -1,5 +1,7 @@
 /**
- * CONTRATS (façon CS:GO) — logique pure partagée par le serveur Convex (convex/contracts.ts) et le mode démo.
+ * CONTRATS (façon CS:GO) — logique pure du serveur Convex (convex/contracts.ts).
+ * (V3) Contrats retirés le 01/12 (v2.1.40) : page, démo et appels du client supprimés ; ce module reste tant que le
+ * serveur garde `contracts.sign` (refus daté) pour les vieux onglets V2.
  *
  * Règle (décision du groupe, 2 nov.) : on brûle des DOUBLONS d'une même étoile contre UNE carte de l'étoile au-dessus.
  *  - prix : 10 cartes pour chaque étoile, de 1★ à 5★ (retours Hugo 10/11 ; avant 10 / 20 / 50) — pas de contrat 6★ ;
@@ -86,17 +88,4 @@ export function rollContract(rarity: string, items: ContractItem[], owned: (card
   const fresh = pool.filter((c) => !owned(c.id));
   const list = fresh.length ? fresh : pool;
   return list[Math.min(list.length - 1, Math.floor(rand() * list.length))];
-}
-
-/** Remplit automatiquement un contrat avec les doublons les plus nombreux d'abord. */
-export function autoFill(rarity: string, dups: Array<{ cardId: string; spare: number }>): ContractItem[] {
-  let need = CONTRACT_COST[rarity as StarRarityId] ?? 0;
-  const out: ContractItem[] = [];
-  for (const d of [...dups].sort((a, b) => b.spare - a.spare)) {
-    if (need <= 0) break;
-    const n = Math.min(d.spare, need);
-    if (n > 0) out.push({ cardId: d.cardId, count: n });
-    need -= n;
-  }
-  return out;
 }

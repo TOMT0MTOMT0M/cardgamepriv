@@ -37,18 +37,18 @@ html, body { font-variant-numeric: tabular-nums; }
 
 /* pages : aplat noir + trame de points au pas de 22 px qui s'efface vers le bas (plan de travail), comme .games::before.
    Un pseudo-élément de 760 px sous le contenu, qui défile avec lui : rien à repeindre sur toute la hauteur de la page. */
-.collection, .trades, .contracts, .profile, .ranking, .succes, .suggestions, .infos, .amis { background: #000; isolation: isolate; }
-.collection::before, .trades::before, .contracts::before, .profile::before, .ranking::before, .succes::before, .suggestions::before, .infos::before, .amis::before {
+.collection, .trades, .profile, .ranking, .succes, .suggestions, .infos, .amis { background: #000; isolation: isolate; }
+.collection::before, .trades::before, .profile::before, .ranking::before, .succes::before, .suggestions::before, .infos::before, .amis::before {
   content: ''; position: absolute; left: 0; right: 0; top: 0; height: 760px; z-index: -1; pointer-events: none;
   background: radial-gradient(rgba(255, 255, 255, 0.075) 1px, transparent 1.3px) 0 0 / 22px 22px;
   -webkit-mask: linear-gradient(#000, transparent); mask: linear-gradient(#000, transparent);
 }
-/* une carte ouverte en grand / un contrat qui brûle : la page s'efface devant la 3D, la trame aussi */
-.collection.viewing::before, .trades.viewing::before, .contracts.viewing::before, .profile.viewing::before, .contracts.recycling::before { display: none; }
+/* une carte ouverte en grand : la page s'efface devant la 3D, la trame aussi */
+.collection.viewing::before, .trades.viewing::before, .profile.viewing::before { display: none; }
 
 /* pièces encadrées : filet + 8 repères d'angle de 1 px (longueur --cs, animable ; couleur --uk).
    Posés en `background-image` seulement : une teinte d'information en `background-color` reste en place. */
-.progress, .ct-sheet, .ct-tier, .ct-recap, .sc-c, .sc-primes, .sc-recap, .am-card, .am-login, .if-entry, .if-sec, .sg-form, .sg-item, .sg-survey,
+.progress, .sc-c, .sc-primes, .sc-recap, .am-card, .am-login, .if-entry, .if-sec, .sg-form, .sg-item, .sg-survey,
 .ob-card, .ob-empty, .ob-modal, .pf-panel, .pf-stat, .pf-key, .pf-lb, .pf-cosm, .pf-picker, .lb-pd, .pd, .trade, .matches, .tr-filters, .filters.stuck,
 .missions-pop, .status-pop, .me-menu, .user-menu, .pack-sheet, .ps-block, .pc-sec, .bd-card, .al-sec, .ow, .lg, .sv, .gpu-lost-box, .gd-tip, .binder-pick {
   --uk: var(--gm-k);
@@ -59,21 +59,21 @@ html, body { font-variant-numeric: tabular-nums; }
 }
 
 /* ───────────── typographie : étiquettes techniques, titres de page */
-.kicker, .pf-eyebrow, .ct-head .eyebrow { display: inline-flex; align-items: center; gap: 8px; font: var(--gm-label); letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-3); }
-.kicker::before, .pf-eyebrow::before, .ct-head .eyebrow::before { content: ''; width: 6px; height: 6px; flex: none; border: 1px solid currentColor; }
+.kicker, .pf-eyebrow { display: inline-flex; align-items: center; gap: 8px; font: var(--gm-label); letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-3); }
+.kicker::before, .pf-eyebrow::before { content: ''; width: 6px; height: 6px; flex: none; border: 1px solid currentColor; }
 
 /* en-tête de page : étiquette, grand titre Bold Frame, filet + règle graduée (comme « Espace Jeux ») */
-.ct-head, .rk-head, .sc-head, .am-head, .sg-head, .if-head { position: relative; padding-bottom: 18px; margin-bottom: 24px; border-bottom: 1px solid var(--gm-line); }
-.ct-head::after, .rk-head::after, .sc-head::after, .am-head::after, .sg-head::after, .if-head::after, .tr-sec-h::after {
+.rk-head, .sc-head, .am-head, .sg-head, .if-head { position: relative; padding-bottom: 18px; margin-bottom: 24px; border-bottom: 1px solid var(--gm-line); }
+.rk-head::after, .sc-head::after, .am-head::after, .sg-head::after, .if-head::after, .tr-sec-h::after {
   content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 6px; pointer-events: none;
   background: repeating-linear-gradient(90deg, var(--gm-line-2) 0 1px, transparent 1px 22px);
   -webkit-mask: linear-gradient(90deg, #000 60%, transparent); mask: linear-gradient(90deg, #000 60%, transparent);
 }
-.ct-head h1, .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1, .if-head h1 { margin: 12px 0 10px; font: 600 clamp(36px, 5.6vw, 66px)/0.9 var(--title); font-style: normal; letter-spacing: -0.015em; text-wrap: balance; }
-.ct-head .muted, .rk-head .muted, .sc-head .muted, .am-head .muted, .sg-head .muted, .if-head .muted { max-width: 66ch; font: 400 12.5px/1.6 var(--mono); }
+.rk-head h1, .sc-head h1, .am-head h1, .sg-head h1, .if-head h1 { margin: 12px 0 10px; font: 600 clamp(36px, 5.6vw, 66px)/0.9 var(--title); font-style: normal; letter-spacing: -0.015em; text-wrap: balance; }
+.rk-head .muted, .sc-head .muted, .am-head .muted, .sg-head .muted, .if-head .muted { max-width: 66ch; font: 400 12.5px/1.6 var(--mono); }
 @media (max-width: 860px) {
-  .ct-head, .rk-head, .sc-head, .am-head, .sg-head, .if-head { padding-bottom: 14px; margin-bottom: 18px; }
-  .ct-head h1, .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1, .if-head h1 { font-size: clamp(32px, 9vw, 44px); }
+  .rk-head, .sc-head, .am-head, .sg-head, .if-head { padding-bottom: 14px; margin-bottom: 18px; }
+  .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1, .if-head h1 { font-size: clamp(32px, 9vw, 44px); }
 }
 
 /* ───────────── en-tête du site */
@@ -140,15 +140,15 @@ select, textarea { border-radius: var(--gm-r); }
 .p-bar, .p-bar i, .msn-bar, .msn-bar i, .sc-pb, .sc-pb > i, .pf-k-bar, .pf-rbar, .ps-pb, .ps-pb i, .ps-bb, .ps-bb i, .gauge-bar, .gm-bar, .al-bar, .al-bar i, .sum-prog i, .pf-ach-bar, .pf-ach-bar > i, .l-bar { border-radius: var(--r-pill); }
 
 @media all {
-  .sc-c, .if-entry, .ob-card, .am-card, .pf-stat, .ct-tier, .lb-pd, .pd, .sg-item { transition: --cs var(--dur-emphatique) var(--gm-soft), border-color var(--dur-standard); }
+  .sc-c, .if-entry, .ob-card, .am-card, .pf-stat, .lb-pd, .pd, .sg-item { transition: --cs var(--dur-emphatique) var(--gm-soft), border-color var(--dur-standard); }
 }
 @media (hover: hover) {
-  .sc-c:hover, .if-entry:hover, .ob-card:hover, .am-card:hover, .pf-stat:hover, .ct-tier:hover, .lb-pd:hover, .pd:hover, .sg-item:hover { --cs: 18px; border-color: var(--gm-line-2); }
+  .sc-c:hover, .if-entry:hover, .ob-card:hover, .am-card:hover, .pf-stat:hover, .lb-pd:hover, .pd:hover, .sg-item:hover { --cs: 18px; border-color: var(--gm-line-2); }
 }
 
 /* ───────────── textes : Inter pour ce qui se lit, Bold Frame pour ce qui se nomme (titres, chiffres)
    (posé sur les pages et les panneaux, pas sur <body> : la boutique 3D, l'ouverture et les scènes gardent leur police) */
-.collection, .trades, .contracts, .profile, .ranking, .succes, .suggestions, .infos, .amis,
+.collection, .trades, .profile, .ranking, .succes, .suggestions, .infos, .amis,
 .missions-pop, .status-pop, .me-menu, .ob-modal, .gm-modal, .pack-sheet, .ow, .sv, .lg { font-family: var(--mono); font-size: 13.5px; line-height: 1.5; }
 
 /* ───────────── ÉCHANGES */
@@ -219,16 +219,8 @@ select, textarea { border-radius: var(--gm-r); }
 .if-tag.t-new { background: #fff; border-color: #fff; color: #000; }
 .if-toc a { border-radius: var(--r-ctl); }
 
-/* ───────────── CONTRATS */
-.ct-head p { max-width: 66ch; margin: 0; font: 400 12.5px/1.6 var(--mono); color: var(--ink-3); }
-.ct-head p b { color: var(--ink-2); font-weight: 500; }
-.ct-tier { background-color: var(--gm-fill); }
-.ct-tier:not(.on):hover { transform: none; }
-.ct-tier.on { --uk: var(--rc); --cs: 18px; border-color: var(--rc); box-shadow: none; }
-.ct-tier .ct-tp, .ct-prot { border-radius: var(--r-ctl); }
-.ct-tier .ct-tp.ok { background: none; }
-.ct-sheet { background-color: var(--gm-fill); }
-.ct-actions .ghost { letter-spacing: 0.04em; }
+/* ───────────── pastille des protections (Forge ; née avec les contrats) */
+.ct-prot { border-radius: var(--r-ctl); }
 
 /* ───────────── AMIS */
 .am-card { background-color: var(--gm-fill); }
@@ -318,8 +310,8 @@ body[data-route='echanges'], body[data-route='marche'] { --accent: #6f9a74; }
 body[data-route='jeux'] { --accent: #b5344f; }
 body[data-route='classement'], body[data-route='succes'] { --accent: #d9982a; }
 body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
-.kicker::before, .pf-eyebrow::before, .ct-head .eyebrow::before { border-radius: 50%; border-color: var(--accent); background: var(--accent); }
-.ct-head::after, .rk-head::after, .sc-head::after, .am-head::after, .sg-head::after, .if-head::after, .tr-sec-h::after {
+.kicker::before, .pf-eyebrow::before { border-radius: 50%; border-color: var(--accent); background: var(--accent); }
+.rk-head::after, .sc-head::after, .am-head::after, .sg-head::after, .if-head::after, .tr-sec-h::after {
   background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, transparent) 0 1px, transparent 1px 22px);
 }
 .nav-pill { box-shadow: inset 0 -2px 0 var(--accent); }
@@ -571,8 +563,6 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
   .sum-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sum-actions .btn-ghost { min-width: 0; padding-inline: 10px; white-space: normal; text-wrap: balance; line-height: 1.25; }
   .sum-actions .forge-dups { grid-column: 1 / -1; }
-  /* contrats : la pastille « pas encore » reste dans sa carte */
-  .ct-tier .ct-tp { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 }
 /* récap au téléphone tenu debout : jamais sous la barre du haut (petit écran, grand texte) ; c'est la grille des cartes, qui défile déjà, qui rétrécit
    (pas en paysage : la hauteur y est déjà réglée par style.css) */

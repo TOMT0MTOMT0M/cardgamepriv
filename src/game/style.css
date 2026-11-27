@@ -52,7 +52,7 @@ input[type='search']::-webkit-search-cancel-button:hover { opacity: 1; }
 :focus-visible { outline: 2px solid var(--rose); outline-offset: 2px; }
 /* barres de défilement discrètes, accordées au thème sombre */
 
-.collection, .trades, .contracts, .pc-list, .ps-scroll { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.16) transparent; }
+.collection, .trades, .pc-list, .ps-scroll { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.16) transparent; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.26); }
@@ -169,8 +169,8 @@ body.opening .topbar:hover { opacity: 1; }
 @keyframes view-in { from { opacity: 0; transform: translateY(10px); } }
 /* audit 06/11 : les barres se remplissent par un scaleX composité (0 layout), leur largeur est posée d'un coup */
 @keyframes bar-in { from { transform: scaleX(0); } }
-body[data-route='collection'] .views, body[data-route='echanges'] .views, body[data-route='contrats'] .views, body[data-route='profil'] .views, body[data-route='classement'] .views, body[data-route='succes'] .views, body[data-route='suggestions'] .views, body[data-route='maj'] .views, body[data-route='tuto'] .views { pointer-events: auto; }
-/* une carte est ouverte en grand (collection, contrats) : les gestes vont à la carte 3D (tourner, incliner, zoomer),
+body[data-route='collection'] .views, body[data-route='echanges'] .views,body[data-route='profil'] .views, body[data-route='classement'] .views, body[data-route='succes'] .views, body[data-route='suggestions'] .views, body[data-route='maj'] .views, body[data-route='tuto'] .views { pointer-events: auto; }
+/* une carte est ouverte en grand (collection, profil) : les gestes vont à la carte 3D (tourner, incliner, zoomer),
    seuls les boutons de la visionneuse restent cliquables */
 body.card-open .views { pointer-events: none; }
 
@@ -184,11 +184,11 @@ body.card-open .views { pointer-events: none; }
 .open-btn { min-width: 220px; padding: 16px 34px; border: 0; border-radius: var(--r-pill); background: linear-gradient(180deg, #ffffff, #ffffff); color: #000000; font: 600 15px var(--mono); letter-spacing: 0.35em; text-indent: 0.35em; box-shadow: 0 12px 40px -10px rgba(255, 255, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
 .open-btn:disabled { animation: none; background: #3a302b; color: var(--ink-3); box-shadow: none; }
 .open-btn:not(:disabled):hover { filter: brightness(1.06); }
-.open-btn:not(:disabled):active, .ct-actions .sign.ready:active { animation: none; transform: scale(0.96); }
+.open-btn:not(:disabled):active { animation: none; transform: scale(0.96); }
 /* respiration : seulement transform + opacité d'une lueur (pas d'ombre animée → pas de repeinte à chaque image) */
 @keyframes breathe { 50% { transform: scale(1.04); } }
-.open-btn, .ct-actions .sign { position: relative; isolation: isolate; }
-.open-btn::after, .ct-actions .sign.ready::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; box-shadow: 0 16px 50px -8px rgba(255, 255, 255, 1); opacity: 0; animation: breathe-glow 2.6s ease-in-out infinite; pointer-events: none; }
+.open-btn { position: relative; isolation: isolate; }
+.open-btn::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; box-shadow: 0 16px 50px -8px rgba(255, 255, 255, 1); opacity: 0; animation: breathe-glow 2.6s ease-in-out infinite; pointer-events: none; }
 .open-btn:disabled::after { display: none; }
 @keyframes breathe-glow { 50% { opacity: 1; } }
 /* bouton qui attend le serveur (ui.ts, busyButton) : le texte s'efface derrière une petite roue */
@@ -368,7 +368,7 @@ body.card-open .views { pointer-events: none; }
 .tile.mini .name { font-size: 12px; }
 
 /* ───────────── collection */
-.collection, .trades, .contracts, .profile, .ranking, .succes, .suggestions, .infos { overflow-y: auto; overscroll-behavior: contain; padding: calc(var(--top) + env(safe-area-inset-top) + 18px) 20px calc(40px + env(safe-area-inset-bottom)); background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.85)); }
+.collection, .trades, .profile, .ranking, .succes, .suggestions, .infos { overflow-y: auto; overscroll-behavior: contain; padding: calc(var(--top) + env(safe-area-inset-top) + 18px) 20px calc(40px + env(safe-area-inset-bottom)); background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.85)); }
 .coll-head { max-width: 1200px; margin: 0 auto 16px; display: flex; flex-direction: column; gap: 14px; }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .tab { padding: 8px 14px; border-radius: var(--r-pill); border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); font: 500 15px var(--title); transition: border-color var(--dur-rapide), background-color var(--dur-rapide); }
@@ -431,8 +431,8 @@ body.card-open .views { pointer-events: none; }
 @keyframes grid-in { from { opacity: 0.25; transform: translateY(6px); } }
 .v-info.swap { animation: grid-in 0.35s var(--ease-entree); }
 .empty { text-align: center; padding: 40px; color: var(--ink-3); font: 400 13px var(--mono); }
-.collection.viewing > :not(.viewer-ui), .contracts.viewing > :not(.viewer-ui), .profile.viewing > :not(.viewer-ui) { visibility: hidden; }
-.collection.viewing, .contracts.viewing, .profile.viewing { background: transparent; overflow: hidden; pointer-events: none; }
+.collection.viewing > :not(.viewer-ui), .profile.viewing > :not(.viewer-ui) { visibility: hidden; }
+.collection.viewing, .profile.viewing { background: transparent; overflow: hidden; pointer-events: none; }
 .viewer-ui { position: fixed; inset: 0; pointer-events: none; }
 .shop .viewer-ui, .shop .viewer-ui * { pointer-events: none; }
 .shop .viewer-ui .close { pointer-events: auto; }
@@ -458,63 +458,7 @@ body.card-open .views { pointer-events: none; }
 .v-info, .v-pos { transition: opacity var(--dur-standard); }
 .viewer-zoomed .v-info, .viewer-zoomed .v-pos, .viewer-zoomed .v-hint { opacity: 0; }
 
-/* ───────────── contrats */
-.ct-wrap { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
-.ct-head h1 { margin: 4px 0 6px; font: 500 34px/1.05 var(--title); font-style: italic; }
-.ct-head p { margin: 0; max-width: 640px; color: var(--ink-2); font-size: 14px; line-height: 1.45; }
-.ct-head .eyebrow { font: 500 12px var(--mono); letter-spacing: 0.12em; color: var(--rose); text-transform: uppercase; }
-.ct-tiers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-.ct-tier { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-box); border: 1px solid var(--line); background: var(--panel); text-align: left; transition: border-color var(--dur-rapide), transform var(--dur-rapide), box-shadow var(--dur-standard); }
-.ct-tier:not(.on):hover { border-color: rgba(255, 255, 255, 0.22); transform: translateY(-2px); }
-.ct-tier .ct-tr { font: 600 16px var(--mono); }
-.ct-tier .ct-tc { font: 500 12px var(--mono); color: var(--ink-2); }
-.ct-tier .ct-th { font: 400 12px var(--mono); color: var(--ink-3); }
-.ct-tier.ready .ct-th { color: var(--gold); }
-.ct-tier.on { border-color: var(--rc); box-shadow: inset 0 0 0 1px var(--rc), 0 10px 28px -16px var(--rc); }
-.ct-sheet { position: relative; padding: 16px 18px; border-radius: var(--r-box); border: 1px solid color-mix(in srgb, var(--ct-c, #888) 45%, var(--line)); background: radial-gradient(120% 140% at 50% 0%, color-mix(in srgb, var(--ct-c, #888) 12%, transparent), transparent 60%), var(--panel); display: flex; flex-direction: column; gap: 12px; }
-.ct-sheet-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.ct-title { font: 500 20px var(--title); font-style: italic; }
-.ct-fill { font: 500 13px var(--mono); color: var(--ink-3); }
-.ct-fill b { font-size: 18px; color: var(--ink); }
-.ct-slots { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; }
-.ct-slot { aspect-ratio: 63 / 88; border-radius: 6px; border: 1px dashed var(--line-2); background: rgba(255, 255, 255, 0.025); padding: 0; overflow: hidden; display: grid; place-items: center; }
-.ct-slot.full { border: 1px solid color-mix(in srgb, var(--ct-c) 40%, var(--line-2)); background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.08), transparent 70%), #111111; }
-.ct-slot { transition: border-color var(--dur-rapide), transform var(--dur-rapide); }
-.ct-slot img { width: 86%; height: 86%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); transition: opacity var(--dur-rapide), filter var(--dur-rapide); }
-.ct-slot img.sreal { width: 100%; height: 100%; object-fit: cover; filter: none; }
-.ct-slot.full:hover img.sreal { filter: grayscale(0.6); }
-.ct-slots { counter-reset: slot; }
-.ct-slot { counter-increment: slot; }
-.ct-slot:not(.full)::before { content: counter(slot); font: 500 12px var(--mono); color: rgba(255, 255, 255, 0.13); }
-.ct-dup.picked, .trades .tile.picked { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ct-c, var(--rose)) 70%, transparent), 0 8px 22px -12px var(--ct-c, var(--rose)); }
-.ct-slot.full:hover { border-color: var(--err); }
-.ct-slot.full:hover img { opacity: 0.55; filter: grayscale(0.6) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); }
-.ct-slot.full:active { transform: scale(0.92); }
-.ct-slot.pop { animation: slot-pop 0.38s cubic-bezier(0.34, 1.7, 0.6, 1); }
-@keyframes slot-pop { from { transform: scale(0.55) translateY(8px); opacity: 0.2; } }
-.ct-fill.done b { color: var(--gold); }
-.ct-actions .sign.ready { }
-.ct-odds { font: 500 12px var(--mono); color: var(--ink-2); }
-.ct-odds b { color: var(--ink); }
-.ct-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.ct-actions .ghost { border: 1px solid var(--line-2); background: none; border-radius: var(--r-pill); padding: 8px 14px; font: 500 12px var(--mono); letter-spacing: 0.06em; color: var(--ink-2); transition: border-color var(--dur-rapide), color var(--dur-rapide), transform var(--dur-rapide); }
-.ct-actions .ghost:not(:disabled):hover { border-color: rgba(255, 255, 255, 0.32); color: var(--ink); }
-.ct-actions .ghost:not(:disabled):active { transform: scale(0.97); }
-.ct-actions .sign { min-width: 200px; }
-.ct-pick-t { font: 500 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
-.ct-pick-t span { letter-spacing: 0.1em; margin-left: 6px; color: var(--ink-2); }
-.ct-dups { max-width: none; }
-.ct-dup.used-up { opacity: 0.35; cursor: default; }
-.ct-dup .count { color: var(--ink-2); }
-/* signature : chaque carte du contrat s'embrase puis disparaît, en cascade */
-.contracts.burning .ct-slot.full { animation: ct-burn 0.7s ease-in forwards; animation-delay: var(--d, 0s); }
-.contracts.burning .ct-sheet { box-shadow: 0 0 60px -20px var(--ct-c); }
-@keyframes ct-burn {
-  0% { filter: none; transform: scale(1); }
-  35% { filter: brightness(2.2) sepia(1) saturate(4) hue-rotate(-20deg); transform: scale(1.06); box-shadow: 0 0 18px 2px #ff8a3d; }
-  100% { filter: brightness(0) blur(2px); transform: scale(0.6) translateY(-10px); opacity: 0; }
-}
-.ci-new { font: 600 12px var(--mono); letter-spacing: 0.12em; color: var(--gold); }
+.trades .tile.picked { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ct-c, var(--rose)) 70%, transparent), 0 8px 22px -12px var(--ct-c, var(--rose)); }
 
 /* ───────────── échanges */
 .trades { display: grid; grid-template-columns: 280px 1fr 300px; gap: 18px; align-items: start; }
@@ -630,13 +574,7 @@ body.card-open .views { pointer-events: none; }
   .fb { font-size: 10px; padding: 2px 7px; }
   /* récap : 5 cartes sur une ligne → pastille « NOUVELLE » resserrée (elle débordait de la vignette) */
   .sum-cards .tile .badge { top: 3px; left: 3px; padding: 1px 4px; font-size: 10px; letter-spacing: 0.05em; }
-  .collection, .trades, .contracts { padding-left: 16px; padding-right: 16px; }
-  /* étoiles des contrats : une rangée qui défile au doigt, qui s'estompe au bord (on devine la suite) */
-  .ct-tiers { grid-template-columns: repeat(5, minmax(108px, 1fr)); overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 3px 16px 5px; scroll-padding: 0 16px; scroll-snap-type: x proximity; -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 28px), transparent); }
-  .ct-tiers::-webkit-scrollbar { display: none; }
-  .ct-tier { scroll-snap-align: start; }
-  .ct-slots { gap: 4px; }
-  .ct-head h1 { font-size: 27px; }
+  .collection, .trades { padding-left: 16px; padding-right: 16px; }
   .progress { grid-template-columns: 1fr; padding: 14px; }
   .p-pct { font-size: 38px; }
   .p-stars { grid-template-columns: repeat(3, 1fr); }
@@ -645,11 +583,6 @@ body.card-open .views { pointer-events: none; }
   .tabs, .subs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; scroll-padding: 0 16px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 28px), transparent); }
   .tabs::-webkit-scrollbar, .subs::-webkit-scrollbar { display: none; }
   .tab, .chip.sub { flex: 0 0 auto; white-space: nowrap; }
-  .ct-sheet { padding: 14px; }
-  .ct-sheet-top { flex-wrap: wrap; row-gap: 2px; }
-  .ct-title { font-size: 18px; }
-  .ct-actions .sign { flex: 1 1 100%; }
-  .ct-actions .ghost { flex: 1 1 auto; }
   .search { max-width: none; }
   .trades { grid-template-columns: 1fr; }
   /* téléphone : un ami choisi → on ne garde que le composeur (‹ pour revenir), la proposition devient une barre
@@ -709,7 +642,7 @@ body.card-open .views { pointer-events: none; }
   .search, .note { font-size: 16px; }
 }
 /* compteurs qui changent chaque seconde : chiffres de largeur fixe (pas de tremblement du texte) */
-.me .packs, .hud-count, .ct-fill, .open-sub, .tile .count, .p-txt, .tab span, .chip.sub em, .ps em { font-variant-numeric: tabular-nums; }
+.me .packs, .hud-count, .open-sub, .tile .count, .p-txt, .tab span, .chip.sub em, .ps em { font-variant-numeric: tabular-nums; }
 /* animations réduites (réglage d'accessibilité du téléphone ou de l'ordinateur) */
 @media not all {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
@@ -849,11 +782,6 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
   .summary { background: rgba(0, 0, 0, 0.95); }
   .card-info { background: rgba(0, 0, 0, 0.92); }
 }
-
-/* contrat signé : la page s'efface pendant que les doublons se rassemblent en pioche puis se défont (scène 3D recycle) */
-.contracts > :not(.viewer-ui) { transition: opacity var(--dur-emphatique) ease; }
-.contracts.recycling > :not(.viewer-ui) { opacity: 0; pointer-events: none; }
-.contracts.recycling { background: transparent; overflow: hidden; pointer-events: none; transition: background var(--dur-emphatique) ease; }
 
 /* collection : famille des Jeux vidéo (177) choisie dans une liste, à côté de l'onglet « Jeux vidéo » */
 .fam-select { flex: 0 0 auto; max-width: 260px; padding: 6px 30px 6px 12px; border-radius: var(--r-pill); border: 1px solid var(--rose); background: rgba(255, 255, 255, 0.1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23f2c4b4' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 12px center / 10px 6px; color: var(--ink); font: 500 12px var(--title); appearance: none; -webkit-appearance: none; cursor: pointer; }
@@ -1188,41 +1116,11 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 }
 
 
-/* ───────────── contrats : compteur de contrats possibles, protections, combustion dans les cases, flammes */
-.ct-tier .ct-tp { margin-top: 2px; padding: 2px 7px; border-radius: var(--r-pill); border: 1px dashed var(--line-2); font: 600 12px var(--mono); letter-spacing: 0.06em; color: var(--ink-3); white-space: nowrap; }
-.ct-tier .ct-tp.ok { border-style: solid; border-color: var(--gold); color: var(--gold); background: rgba(255, 255, 255, 0.1); }
+/* ───────────── pastille des protections (♥ ▤ ⌂) d'une vignette brûlable — née avec les contrats, gardée pour la Forge (forge.ts) */
 .ct-prot { position: absolute; top: 5px; left: 5px; z-index: 3; min-width: 20px; height: 20px; padding: 0 4px; border-radius: var(--r-pill); display: grid; place-items: center; background: rgba(0, 0, 0, 0.85); border: 1px solid var(--rose); color: var(--rose-l); font-size: 12px; letter-spacing: 0.08em; }
-.ct-lock { position: absolute; bottom: 22px; right: 5px; z-index: 3; font-size: 11px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7)); }
-.ct-slot { position: relative; overflow: hidden; }
-/* la carte se consume : le feu part d'un point (--bx/--by) et ronge l'image ; bord incandescent, charbon derrière */
-.ct-slot.burn { border-color: #ff7a2a; box-shadow: 0 0 18px -4px #ff6a1a; }
-.ct-slot.burn img { -webkit-mask-image: radial-gradient(circle at var(--bx, 50%) var(--by, 50%), transparent var(--r, 0%), #000 calc(var(--r, 0%) + 10%)); mask-image: radial-gradient(circle at var(--bx, 50%) var(--by, 50%), transparent var(--r, 0%), #000 calc(var(--r, 0%) + 10%)); animation: burn-eat 1.1s cubic-bezier(0.3, 0, 0.7, 1) forwards; filter: none !important; opacity: 1 !important; }
-.ct-slot.burn::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: radial-gradient(circle at var(--bx, 50%) var(--by, 50%), rgba(255, 220, 120, 0.95) calc(var(--r, 0%) - 2%), #ff7a1a var(--r, 0%), rgba(140, 30, 0, 0.85) calc(var(--r, 0%) + 7%), transparent calc(var(--r, 0%) + 13%)); mix-blend-mode: screen; animation: burn-eat 1.1s cubic-bezier(0.3, 0, 0.7, 1) forwards; }
-.ct-slot.burn::before { content: ''; position: absolute; inset: 0; z-index: 1; background: radial-gradient(circle at var(--bx, 50%) var(--by, 50%), #1a0c06 var(--r, 0%), transparent calc(var(--r, 0%) + 8%)); animation: burn-eat 1.1s cubic-bezier(0.3, 0, 0.7, 1) forwards; }
+/* (V3) gardé à la suppression des contrats : enregistré en <percentage>, il change le rendu de `--r` posé en px par
+   les éclats de l'ouverture (opening.ts, op-fly) — le retirer modifierait cette animation */
 @property --r { syntax: '<percentage>'; inherits: true; initial-value: 0%; }
-@keyframes burn-eat { from { --r: 0%; } to { --r: 150%; } }
-/* (V3, lot 08) braises : 12 particules posées une fois dans la fiche, animées en transform / opacity (contracts.ts, emberBurst) */
-.ct-embers { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
-.ct-embers i { position: absolute; left: -1.5px; top: -1.5px; width: 3px; height: 3px; border-radius: 50%; background: #ffb54a; box-shadow: 0 0 6px #ff7a1a; opacity: 0; }
-/* vol d'un doublon vers son encoche (contracts.ts, flyToSlot) */
-.ct-fly { position: fixed; z-index: 40; margin: 0; pointer-events: none; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6)); }
-.ct-fly.sreal { object-fit: cover; border-radius: 6px; filter: none; }
-.contracts.burning .ct-sheet { box-shadow: 0 0 60px -10px rgba(255, 122, 42, 0.55); border-color: rgba(255, 122, 42, 0.5); }
-.contracts.burning .ct-actions, .contracts.burning .ct-dups { pointer-events: none; }
-/* les flammes se lèvent (plein écran) : la carte obtenue émerge derrière */
-.ct-flames { position: fixed; inset: 0; z-index: 9; pointer-events: none; overflow: hidden; animation: flames-out 1.6s ease-out forwards; }
-.ct-flames::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 80% 70% at 50% 110%, rgba(255, 140, 40, 0.75), rgba(255, 60, 10, 0.35) 40%, transparent 70%); animation: flames-up 1.4s var(--ease-entree) both; }
-.ct-flames i { position: absolute; bottom: -20vh; width: 22vw; height: 70vh; border-radius: 50% 50% 20% 20% / 60% 60% 20% 20%; background: radial-gradient(ellipse at 50% 100%, rgba(255, 230, 140, 0.9), rgba(255, 130, 30, 0.7) 35%, rgba(200, 40, 0, 0.3) 65%, transparent 80%); filter: blur(14px); mix-blend-mode: screen; animation: flame-lick 0.9s ease-in-out infinite alternate, flames-up 1.2s var(--ease-entree) both; }
-.ct-flames i:nth-child(1) { left: -4vw; animation-delay: 0s, 0.05s; } .ct-flames i:nth-child(2) { left: 10vw; height: 85vh; animation-delay: 0.15s, 0.12s; } .ct-flames i:nth-child(3) { left: 26vw; animation-delay: 0.3s, 0.2s; } .ct-flames i:nth-child(4) { left: 40vw; height: 95vh; animation-delay: 0.05s, 0s; } .ct-flames i:nth-child(5) { left: 56vw; animation-delay: 0.22s, 0.15s; } .ct-flames i:nth-child(6) { left: 70vw; height: 80vh; animation-delay: 0.4s, 0.25s; } .ct-flames i:nth-child(7) { left: 84vw; animation-delay: 0.1s, 0.08s; }
-@keyframes flame-lick { from { transform: scaleY(1) translateY(0); } to { transform: scaleY(1.18) translateY(-4vh) scaleX(0.92); } }
-@keyframes flames-up { from { opacity: 0; transform: translateY(40vh); } to { opacity: 1; transform: translateY(0); } }
-@keyframes flames-out { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
-.contracts .ct-bg { position: fixed; z-index: 1; }
-.contracts.viewing > .ct-bg.sum-bg { visibility: visible; }
-@media not all {
-  .ct-flames i { animation: flames-up 1.2s both; }
-  .ct-embers { display: none; }
-}
 
 
 /* ───────────── échanges : filtres, matchs parfaits, badges d'envies, jauge, contre-proposition, historique, zoom */
@@ -1910,27 +1808,9 @@ button.pg-info:hover { color: var(--ink); }
 }
 /* ==== fin lot C ==== */
 
-/* ==== AUDIT 03/11 — lot D (contrats, échanges) ==== */
-/* contrats : récapitulatif avant de signer, bouton armé (second toucher), légende des protections, annuler un retrait */
-.ct-recap { font-size: 12.5px; line-height: 1.5; color: var(--ink-2); padding: 8px 12px; border-radius: var(--r-box); border: 1px dashed color-mix(in srgb, var(--ct-c, #888) 50%, var(--line-2)); }
-.ct-recap b { color: var(--ink); }
-.ct-actions .sign.armed { background: linear-gradient(180deg, #ffffff, #ffffff); color: #000000; animation: none; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3), 0 12px 30px -10px rgba(255, 255, 255, 0.9); }
-.ct-legend { font: 400 12px var(--mono); line-height: 1.5; color: var(--ink-3); margin-top: -8px; }
-.ct-odds .linkish, .ct-undo { color: var(--rose); text-decoration: underline; }
-.ct-skip { color: var(--gold); letter-spacing: 0.08em; animation: ct-skip 1.2s ease-in-out infinite alternate; }
-@keyframes ct-skip { from { opacity: 0.55; } }
-/* la pastille « ×N » (exemplaires mis au contrat / à l'échange) ne passe plus sous l'icône ♥ ▤ ⌂ / « tu la cherches » */
-.ct-dup .badge, .trades .tile .badge { top: auto; bottom: 22px; left: 5px; }
-.contracts .empty a { color: var(--rose); }
-@media (max-width: 600px) {
-  /* cases ≥ 40 px : 2 rangées de 5 pour un contrat de 10, 7 colonnes pour 20 et 50 */
-  .ct-slots.n10 { grid-template-columns: repeat(5, 1fr); }
-  .ct-slots.n20, .ct-slots.n50 { grid-template-columns: repeat(7, 1fr); }
-}
-@media (hover: none) {
-  /* au doigt, pas de survol : une petite croix montre qu'une case pleine se retire d'un toucher */
-  .ct-slot.full:not(.burn)::after { content: '✕'; position: absolute; top: 2px; right: 3px; z-index: 2; font: 700 12px/1 var(--mono); color: rgba(255, 255, 255, 0.75); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); pointer-events: none; }
-}
+/* ==== AUDIT 03/11 — lot D (échanges ; la partie contrats est partie avec eux en V3) ==== */
+/* la pastille « ×N » (exemplaires mis à l'échange) ne passe plus sous l'icône ♥ ▤ ⌂ / « tu la cherches » */
+.trades .tile .badge { top: auto; bottom: 22px; left: 5px; }
 /* échanges : bouton armé (second toucher), échange reçu (jauge, dernier exemplaire, ancienneté, Refuser en retrait) */
 .trades .armed { background: linear-gradient(180deg, #ffffff, #ffffff) !important; color: #000000 !important; border-color: transparent !important; text-decoration: none; padding: 7px 12px; border-radius: var(--r-pill); }
 .trade .when { font: 400 12px var(--mono); color: var(--ink-3); }
@@ -2816,7 +2696,7 @@ html, body { letter-spacing: 0.01em; }
 /* (11/11) plus d'Atsuka Montreal nulle part (décision de Tom) : gros titres en Bold Frame grasse (Bold Frame Two) */
 .logo { font: 800 20px/1 var(--title); letter-spacing: 0.1em; }
 .logo span { font-weight: 600; letter-spacing: 0.34em; }
-.ct-head h1, .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1 { font: 800 31px/1.08 var(--title); font-style: normal; letter-spacing: 0.015em; text-wrap: balance; }
+.rk-head h1, .sc-head h1, .am-head h1, .sg-head h1 { font: 800 31px/1.08 var(--title); font-style: normal; letter-spacing: 0.015em; text-wrap: balance; }
 .pf-id h1 { font-family: var(--title); font-weight: 800; font-style: normal; letter-spacing: 0.02em; }
 .tr-sec-h, .trades > .ob .ob-intro h3 { font: 800 25px/1.1 var(--title); font-style: normal; letter-spacing: 0.015em; }
 .gm-verdict b { font: 800 22px/1.15 var(--title); letter-spacing: 0.02em; }
@@ -2826,7 +2706,7 @@ html, body { letter-spacing: 0.01em; }
 h2, h3 { font-weight: 700; }
 .topbar nav a { font-weight: 600; letter-spacing: 0.14em; }
 @media (max-width: 640px) {
-  .ct-head h1, .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1 { font-size: 24px; }
+  .rk-head h1, .sc-head h1, .am-head h1, .sg-head h1 { font-size: 24px; }
   .pf-id h1 { font-size: 22px; }
   .tr-sec-h, .trades > .ob .ob-intro h3 { font-size: 20px; }
   .logo { font-size: 18px; }
@@ -2923,7 +2803,7 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
   .vol::-moz-range-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--rose) calc(var(--v, 100) * 1%), rgba(255, 255, 255, 0.12) 0); }
 }
 /* état pressé partout où l'on tape (collection, onglets, filtres, albums, paliers) : 50 ms, composité */
-.tab:active, .chip:active, .album:active, .ct-tier:active, .seg button:active, .sleeve:active, .bp-card:active, .al-cover:active, .pf-th:active, .gm-card:active, .gm-game:active, .gm-item:active { transform: scale(0.98); transition-duration: var(--dur-instant); }
+.tab:active, .chip:active, .album:active, .seg button:active, .sleeve:active, .bp-card:active, .al-cover:active, .pf-th:active, .gm-card:active, .gm-game:active, .gm-item:active { transform: scale(0.98); transition-duration: var(--dur-instant); }
 /* pilule hors-ligne : son point ne bat pas quand elle est cachée */
 /* chiffres tabulaires sur tout ce qui compte (plus de « saut » des compteurs en Inter) */
 .me, .hud-count, .p-n, .pt-n, .st-n, .msn-n, .coin-btn b, .sum-prog, .v-pos, .ps-bn, .ps-pity-l, .sc-big, .lb-n, .w-amt, .w-h, .cal-d { font-variant-numeric: tabular-nums; }
@@ -2989,7 +2869,7 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
    - boutons PRIMAIRES : blanc plein, texte noir · SECONDAIRES : contour blanc, texte blanc ;
    - ZÉRO beige, ZÉRO dégradé (les variables chaudes valent désormais blanc / noir, voir :root) ;
    - la SEULE couleur à l'écran : le code des raretés (--rc / --ra, 6★ arc-en-ciel) — gardés : la bordure arc-en-ciel des
-     6★, l'éclat de rareté de la révélation, le feu des contrats (animation), les masques de fondu (fonctionnels).
+     6★, l'éclat de rareté de la révélation, les masques de fondu (fonctionnels).
    ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 .loader { background: #000; }
 .l-logo { color: #fff; filter: none; background: none; -webkit-text-fill-color: #fff; animation: none; }
@@ -3005,7 +2885,7 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
 .topbar nav.more-l { -webkit-mask-image: none; mask-image: none; }
 
 /* boutons : primaire = blanc plein / texte noir ; secondaire = contour blanc / texte blanc */
-.btn-primary, .open-btn, .hud-skip button, .hud-skip button.on, .hud-skip .skip-reveal.on, .ct-actions .sign.armed, .trades .armed, .ob-modal .armed, .profile.has-accent .btn-primary, .m-go {
+.btn-primary, .open-btn, .hud-skip button, .hud-skip button.on, .hud-skip .skip-reveal.on, .trades .armed, .ob-modal .armed, .profile.has-accent .btn-primary, .m-go {
   background: #fff; color: #000; border: 0; box-shadow: none; filter: none; text-shadow: none;
 }
 .btn-primary:not(:disabled):hover, .open-btn:not(:disabled):hover { background: #e6e6e6; box-shadow: none; filter: none; }
@@ -3015,8 +2895,8 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
 .hud-skip .skip-all.armed { color: #fff; border-color: var(--err); }
 
 /* pages : aplat noir (plus de voile dégradé) */
-.collection, .trades, .contracts, .profile, .ranking, .succes, .suggestions, .infos, .amis { background: rgba(0, 0, 0, 0.94); }
-@media (max-width: 720px) { .ct-tiers, .tabs, .subs { background: #000; } .tr-side { background: #000; } }
+.collection, .trades, .profile, .ranking, .succes, .suggestions, .infos, .amis { background: rgba(0, 0, 0, 0.94); }
+@media (max-width: 720px) { .tabs, .subs { background: #000; } .tr-side { background: #000; } }
 .collection .seg.ovf, .lb-boards.ovf, .pf-tabs.ovf { -webkit-mask-image: none; mask-image: none; }
 
 /* barres de progression : blanc plein */
@@ -3037,8 +2917,6 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
 .tile .count { background: #000; }
 .tile .badge, .tile.fresh::before { background: #fff; color: #000; box-shadow: none; }
 .al-cover, .bd-cover, .sl-ph { background: #111; }
-.ct-sheet { background: #0a0a0a; }
-.ct-slot.full { background: #111; }
 .matches, .am-ref { background: #0a0a0a; border-color: var(--line-2); }
 .msn.claimed, .msn.done:not(.claimed) { background: #0a0a0a; box-shadow: none; }
 .sc-c.t4 { background: #0a0a0a; border-color: var(--line-2); }
@@ -3100,12 +2978,6 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
 .lb-pd.p1 .lb-ava { width: 72px; height: 72px; }
 .lb-pd.p1 b { font-size: 1.15em; }
 
-/* (C8) Contrats, onglet de la Collection : la même bascule en tête de page */
-.ct-switch { margin: 0 auto 18px; max-width: 1100px; }
-.ct-switch .seg a { flex: 0 0 auto; white-space: nowrap; padding: 10px 22px; font: 500 15px var(--title); color: var(--ink-2); text-decoration: none; }
-.ct-switch .seg a.on { background: #fff; color: #000; }
-.ct-switch .seg a[hidden] { display: none; }
-@media (max-width: 720px) { .ct-switch .seg { width: 100%; } .ct-switch .seg a { flex: 1 1 0; padding: 9px 8px; font-size: 14px; text-align: center; } }
 /* Mises à jour · Tutoriel · Suggestions : à part, en petit (ordinateur) ; dans le menu du profil (téléphone) */
 .nav-extra { display: flex; align-items: center; gap: 2px; flex: none; }
 .nav-extra a { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: var(--ink-3); text-decoration: none; transition: color var(--dur-rapide), background-color var(--dur-rapide); }

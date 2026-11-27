@@ -1097,11 +1097,6 @@ class GameNetClient {
     return await this.client.query(api.trades.owners, { sessionToken: this.sessionToken ?? undefined, cardId });
   }
 
-  /** Contrat façon CS:GO : brûle des doublons d'une étoile contre une carte de l'étoile au-dessus (src/core/contracts.ts). */
-  public async signContract(rarity: RarityId, items: Array<{ cardId: string; count: number }>) {
-    return await this.client!.mutation(api.contracts.sign, { sessionToken: this.requireToken(), rarity, items });
-  }
-
   public async proposeTrade(toUserId: Id<'users'>, offered: TradeItem[], requested: TradeItem[], note?: string) {
     return await this.client!.mutation(api.trades.propose, { sessionToken: this.requireToken(), toUserId, offered, requested, note });
   }

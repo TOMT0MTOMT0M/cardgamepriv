@@ -532,8 +532,6 @@ export interface GameBackend {
   seasonBoard(): Promise<SeasonBoard>;
   /** Fil d'activité d'un joueur. */
   activity(userId: string): Promise<ActivityItem[]>;
-  /** Contrat : brûle des doublons d'une étoile contre une carte de l'étoile au-dessus. */
-  signContract(rarity: RarityId, items: Array<{ cardId: string; count: number }>): Promise<ContractResult>;
   /** Envies : marque / retire une carte (state.wishlist suit). */
   toggleWish(cardId: string): Promise<void>;
   /** (v2.1) Envies : marque / retire une famille entière (state.wishFams suit). */
@@ -591,14 +589,6 @@ export interface GameBackend {
   counterOffer(id: string, give: TradeItem[], want: TradeItem[], note?: string): Promise<void>;
   /** L'offrant répond à la contre-offre de l'auteur. */
   respondCounter(id: string, accept: boolean): Promise<void>;
-}
-
-export interface ContractResult {
-  cardId: string;
-  cardName: string;
-  rarity: RarityId;
-  mintNumber: number;
-  isNew: boolean;
 }
 
 import type { SurveyAnswer, SurveyResults } from '../core/survey';

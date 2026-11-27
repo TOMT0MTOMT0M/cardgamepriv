@@ -110,7 +110,6 @@ export const fr = {
   'pf.noBinder': 'Pas de classeur épinglé.',
   'pf.pinned': '· épinglé',
   'pf.myBinders': 'Mes classeurs',
-  'pf.nothingMine': 'Rien pour l’instant : tes gros tirages (5★ et +), échanges conclus et contrats signés apparaîtront ici.',
   'pf.nothingMineB': 'Rien pour l’instant : tes gros tirages (5★ et +) et tes échanges conclus apparaîtront ici.', // (v2.1.40)
   'pf.nothing': 'Rien à montrer pour l’instant.',
   'pf.newDot': 'nouveau',

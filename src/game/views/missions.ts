@@ -5,7 +5,7 @@ import { MISSION_BONUS, missionLabel, missionsReady, type Mission } from '../../
 import { SUBTHEMES, subthemeById } from '../../core/sets/themes';
 import { CLOSE_X, busyButton, errMsg, esc, fmtDelay, h, keepFocus, loginPrompt, panelHidden, panelShown, plural, toast } from '../ui';
 import { dailyMissionCoins, weeklyLabel, weeklyReady, type WeeklyMission } from '../../core/weekly';
-import { contractsRetired, fmtCoins } from '../../core/economy';
+import { fmtCoins } from '../../core/economy';
 import { COIN_ICON } from './wallet';
 
 /**
@@ -15,7 +15,7 @@ import { COIN_ICON } from './wallet';
  */
 export const MISSION_ICON = `<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><path d="M17.6 6.4 21 3M18.4 3.4 21 3l-.4 2.6"/></svg>`;
 
-/** Où aller pour avancer cette mission (bouton « Go ») : boutique (bonne fiche), contrats, échanges. */
+/** Où aller pour avancer cette mission (bouton « Go ») : boutique (bonne fiche), échanges. */
 function missionLink(m: Mission): { href: string; label: string } {
   switch (m.kind) {
     case 'openPack':
@@ -28,8 +28,7 @@ function missionLink(m: Mission): { href: string; label: string } {
     case 'contract':
     case 'dups':
       // (v2.1.40) contrats retirés le 01/12 : un doublon se tire en ouvrant des boosters
-      if (contractsRetired(Date.now())) return { href: '#/boutique/bebou', label: 'Go' };
-      return { href: '#/contrats', label: 'Go' };
+      return { href: '#/boutique/bebou', label: 'Go' };
     case 'trade':
       return { href: '#/echanges', label: 'Go' };
     default:

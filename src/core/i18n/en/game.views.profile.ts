@@ -111,7 +111,6 @@ export const en: PartOf<typeof fr> = {
   'pf.noBinder': 'No pinned binder.',
   'pf.pinned': '· pinned',
   'pf.myBinders': 'My binders',
-  'pf.nothingMine': 'Nothing yet: your big pulls (5★ and up), finished trades and signed contracts will show up here.',
   'pf.nothingMineB': 'Nothing yet: your big pulls (5★ and up) and finished trades will show up here.',
   'pf.nothing': 'Nothing to show yet.',
   'pf.newDot': 'new',

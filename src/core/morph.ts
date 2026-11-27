@@ -22,8 +22,8 @@ import { clamp, easeOutExpo } from './ease';
 const coarse = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 const CLIP = typeof CSS !== 'undefined' && CSS.supports?.('overflow', 'clip') ? 'clip' : 'hidden';
 
-/** Blocs qui se déplient tout seuls (hors [data-morph]) : panneaux de l'en-tête, panneaux et salles de l'espace Jeux, contrats. */
-export const MORPH_SEL = '[data-morph], .missions-pop, .status-pop, .gm-panel, .gm-ed-host, .gm-verdict, .gm-room, .ct-sheet';
+/** Blocs qui se déplient tout seuls (hors [data-morph]) : panneaux de l'en-tête, panneaux et salles de l'espace Jeux. */
+export const MORPH_SEL = '[data-morph], .missions-pop, .status-pop, .gm-panel, .gm-ed-host, .gm-verdict, .gm-room';
 /** Blocs qui APPARAISSENT (vide → contenu) : ils se déplient depuis 0 au lieu de surgir. */
 const REVEAL_SEL = '[data-morph="reveal"], .gm-ed-host, .gm-verdict';
 
