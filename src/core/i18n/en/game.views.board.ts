@@ -21,7 +21,7 @@ export const en: PartOf<typeof fr> = {
   'bd.searchA': 'Search for a card or a player',
   'bd.iMiss': 'cards I’m missing',
   'bd.theyWant': 'they’re after my cards',
-  'bd.locked': 'Cards in an open listing or offer are locked 🔒: no contract, forge, bet or other trade while it runs.',
+  'bd.locked': 'Cards in an open listing or offer are locked 🔒: no forge, bet or other trade while it runs.',
   'bd.offers': { one: '{n} offer', other: '{n} offers' },
   'bd.noOffer': 'no offers yet',
   'bd.seeOffers': 'See {what}',

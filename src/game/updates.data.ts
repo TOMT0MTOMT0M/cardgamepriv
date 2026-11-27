@@ -41,6 +41,21 @@ export const UPDATES: UpdateMonth[] = [
     month: 'Novembre 2026',
     entries: [
       {
+        // (V3, lots des agents du 27/11 : marche, encheres, boosters, succes, social, notifs, convex)
+        date: '28 nov.', title: 'V3 : marché refait, enchères, booster de l’événement, succès', tag: 'nouveau',
+        points: [
+          '🛒 Marché refait : Acheter · Vendre · Échanges · Mon activité. La carte est l’annonce : prix, écart au prix conseillé, vendeur. Vendre = ta collection en grille, doublons d’abord.',
+          '🔨 Enchères : mets une carte aux enchères (24, 48 ou 72 h, clôture à 21 h). Tes pièces sont bloquées tant que tu es en tête et rendues tout de suite si quelqu’un surenchérit.',
+          '♥ Une carte que tu veux mise en vente ou aux enchères te prévient (notification + pastille). Dans le chat, une carte jointe dit si elle te manque, avec « Proposer un échange ».',
+          '⏳ Booster de l’événement : sa propre réserve, 1 offert par heure (3 au plus, 5 pour les abonnés), et il s’achète 2 500 pièces. Il ne prend plus un booster normal.',
+          '🎖️ Succès : récompenses revues (en boosters, jusqu’à 12 500 pièces + 20 boosters), 27 nouveaux paliers très longs, et l’aperçu des ouvertures de booster à gagner.',
+          '👤 Profils plus nets : en-tête aligné, bannière plus grande, l’animation de profil se voit sur une bannière GIF. Bouton « Défier » sur un profil et sur la ligne d’un ami.',
+          '👥 Ajouter un ami : les joueurs s’affichent dès 2 lettres. Pack Battle et Battle Royale : règles en 3 étapes.',
+          '🔔 Nouvelles notifications : « ta série s’arrête à minuit » (20 h), missions terminées ou cadeau du jour pas encore pris (1 par jour au plus), résultat de la roulette quand tu as misé.',
+          '⚡ Profils de tes amis : leur collection reste sur ton téléphone, elle s’ouvre tout de suite les fois suivantes. Liste du club : « actif récemment » au lieu de « en ligne ».',
+        ],
+      },
+      {
         date: '20 nov.', title: 'V3 : onglet Événement, titres uniques, roulette en couleurs', tag: 'nouveau',
         points: [
           '♥ Abonnement à 5 € par mois pour soutenir le jeu (serveurs et développement) : +5 boosters de réserve, ta carte Bebou à ton idée, et le vote du mois. Paiement par Wero, un mois à la fois. Aucun avantage sur les tirages.',

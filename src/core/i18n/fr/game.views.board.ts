@@ -20,7 +20,7 @@ export const fr = {
   'bd.searchA': 'Chercher une carte ou un joueur',
   'bd.iMiss': 'des cartes qui me manquent',
   'bd.theyWant': 'ils cherchent mes cartes',
-  'bd.locked': 'Les cartes d’une annonce ou d’une offre en cours sont verrouillées 🔒 : pas de contrat, de forge, de mise ni d’autre échange tant qu’elle court.',
+  'bd.locked': 'Les cartes d’une annonce ou d’une offre en cours sont verrouillées 🔒 : pas de forge, de mise ni d’autre échange tant qu’elle court.',
   'bd.offers': { one: '{n} offre', other: '{n} offres' },
   'bd.noOffer': 'aucune offre pour l’instant',
   'bd.seeOffers': 'Voir {what}',

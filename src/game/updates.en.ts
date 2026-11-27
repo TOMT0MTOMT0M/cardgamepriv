@@ -6,6 +6,20 @@ export const UPDATES_EN: UpdateMonth[] = [
     month: 'November 2026',
     entries: [
       {
+        date: '28 Nov', title: 'V3: new market, auctions, event booster, achievements', tag: 'nouveau',
+        points: [
+          '🛒 Market redone: Buy · Sell · Trades · My activity. The card is the listing: price, gap to the suggested price, seller. Sell = your collection as a grid, duplicates first.',
+          '🔨 Auctions: put a card up for auction (24, 48 or 72 h, closes at 9 pm). Your coins are held while you lead and returned right away if someone outbids you.',
+          '♥ A card you want put up for sale or auction notifies you (notification + badge). In chat, a shared card tells you if you’re missing it, with “Propose a trade”.',
+          '⏳ Event booster: its own reserve, 1 free every hour (up to 3, 5 for subscribers), and it can be bought for 2,500 coins. It no longer uses a regular booster.',
+          '🎖️ Achievements: rewards reworked (in boosters, up to 12,500 coins + 20 boosters), 27 new very long tiers, and a preview of the booster openings to win.',
+          '👤 Cleaner profiles: aligned header, bigger banner, the profile animation now shows over a GIF banner. “Challenge” button on a profile and on a friend’s row.',
+          '👥 Add a friend: players show up from 2 letters. Pack Battle and Battle Royale: rules in 3 steps.',
+          '🔔 New notifications: “your streak ends at midnight” (8 pm), finished missions or daily gift not collected yet (once a day at most), roulette result when you bet.',
+          '⚡ Friends’ profiles: their collection stays on your phone and opens instantly after the first time. Club list: “recently active” instead of “online”.',
+        ],
+      },
+      {
         date: '20 Nov', title: 'V3: Event tab, unique titles, roulette in colour', tag: 'nouveau',
         points: [
           '♥ Subscription at €5 a month to support the game (servers and development): +5 booster reserve, your own Bebou card, and the monthly vote. Paid with Wero, one month at a time. No advantage on pulls.',
