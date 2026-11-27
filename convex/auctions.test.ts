@@ -5,7 +5,7 @@
  *   npx vitest run convex/auctions.test.ts
  */
 import { convexTest } from 'convex-test';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { api, internal } from './_generated/api';
 import schema from './schema';
 import type { Id } from './_generated/dataModel';
@@ -180,6 +180,9 @@ describe('enchères', () => {
 
   test('notifications : dépassé, gagnée, vendue, sans offre', async () => {
     process.env.VAPID_PUBLIC_KEY = 'test';
+    // en journée (Paris) : la nuit, un push `trade` est reporté à 8 h (convex/push.ts)
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-27T13:00:00Z'));
     try {
       const { t, alice, bob, dave } = await setup();
       for (const u of [alice, bob, dave]) await t.run((ctx) => ctx.db.insert('pushSubs', { userId: u.userId, endpoint: `https://push.test/${u.token}`, keys: { p256dh: 'k', auth: 'a' }, createdAt: Date.now() }));
@@ -208,6 +211,7 @@ describe('enchères', () => {
       expect(s2.filter((x) => x.startsWith('dave: Enchère gagnée'))[0]).toMatch(/Pour 8 pièces/);
     } finally {
       delete process.env.VAPID_PUBLIC_KEY;
+      vi.useRealTimers();
     }
   });
 
