@@ -1,6 +1,8 @@
 import type { Experiment, LabContext } from '../../core/Experiment';
 import { TITRES, type TitreUnique } from './data';
 import { SYMBOLES } from './symboles';
+import { BADGE_ART, medaillon } from '../../game/badgeArt';
+import { BADGES } from '../../core/cosmetics';
 
 /**
  * 048 — BADGES DES TITRES UNIQUES (27/11, demande de Hugo validée par Tom) : un insigne dessiné par titre unique (83),
@@ -13,14 +15,14 @@ import { SYMBOLES } from './symboles';
 
 /** Le même gabarit pour tous : seul le symbole et la teinte changent. */
 export function insigne(t: TitreUnique): string {
-  return (
-    `<svg class="b48" viewBox="-50 -50 100 100" aria-hidden="true" style="color:${t.teinte}">` +
-    `<circle r="47" fill="#08080a" stroke="currentColor" stroke-width="3.4"/>` +
-    `<circle r="41" fill="currentColor" fill-opacity=".1" stroke="currentColor" stroke-opacity=".5" stroke-width="1.1"/>` +
-    `<g transform="scale(1.04)" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${SYMBOLES[t.sym] ?? ''}</g>` +
-    `</svg>`
-  );
+  return medaillon(SYMBOLES[t.sym] ?? '', t.teinte, undefined, 'b48');
 }
+
+/** Les badges du jeu (BADGES de src/core/cosmetics.ts), en médaillon : même gabarit, via src/game/badgeArt.ts. */
+const insigneJeu = (id: string): string => {
+  const a = BADGE_ART[id];
+  return medaillon(a.sym, a.teinte, undefined, 'b48');
+};
 
 const collection = (setId: string) => {
   const s = setId.replace(/^(grp|sub):/, '').replace(/^jv-/, '').replace(/-/g, ' ');
@@ -40,6 +42,9 @@ const CSS = `
 .b48-c .b48 { flex: none; }
 .b48-c em { font-style: normal; font-size: 10.5px; line-height: 1.25; color: #b9b6c2; }
 .b48-c:active { background: #111; }
+.b48-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.b48-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 3px; border: 1px solid #2c2b33; border-radius: 4px; }
+.b48-pill i { font-style: normal; font: 500 10px/1 ui-monospace, monospace; letter-spacing: .04em; color: #b9b6c2; }
 .b48-sit { margin-top: 26px; border: 1px solid #1e1d24; border-radius: 6px; padding: 12px; background: #050506; max-width: 460px; }
 .b48-prof { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid #1e1d24; margin-bottom: 6px; }
 .b48-av { width: 38px; height: 38px; border-radius: 50%; border: 1px solid #2c2b33; background: #141418; flex: none; }
@@ -74,6 +79,13 @@ export default function create(): Experiment {
       ([20, 32, 64, 96] as const).map((p) => `<button data-px="${p}" class="${p === state.px ? 'on' : ''}">${p} px</button>`).join('') +
       `</div>`;
     const col = Math.max(state.px, 56) + 18;
+    const jeu =
+      `<div class="b48-h">Badges du jeu · ${BADGES.length}</div><div class="b48-grid" style="grid-template-columns:repeat(auto-fill,minmax(${col}px,1fr))">` +
+      BADGES.map((b) => `<div class="b48-c"><span style="width:${state.px}px;height:${state.px}px;display:block">${insigneJeu(b.id)}</span><em>${b.label}</em></div>`).join('') +
+      `</div>` +
+      `<div class="b48-sit b48-pills">` +
+      BADGES.map((b) => `<span class="b48-pill"><span style="width:20px;height:20px;display:block">${insigneJeu(b.id)}</span><i>${b.label}</i></span>`).join('') +
+      `</div>`;
     const planche = UNIVERS.map((u) => {
       const items = TITRES.filter((t) => t.univers === u);
       return (
@@ -90,7 +102,7 @@ export default function create(): Experiment {
       `<div class="b48-prof"><div class="b48-av"></div><div><b>Hugo</b><span class="b48-tit"><span style="width:24px;height:24px;display:block">${insigne(s)}</span>${s.nom}</span></div></div>` +
       rows.map((t, i) => `<div class="b48-row"><i>${i + 1}</i><span class="n"><span style="width:20px;height:20px;flex:none;display:block">${insigne(t)}</span>${['Hugo', 'Tom', 'Léa', 'Max', 'Inès'][i]} <small>${t.nom}</small></span><span class="s">${(4210 - i * 380).toLocaleString('fr-FR')}</span></div>`).join('') +
       `</div>`;
-    root.innerHTML = bar + planche + sit;
+    root.innerHTML = bar + jeu + planche + sit;
   };
 
   const zoom = (t: TitreUnique) => {

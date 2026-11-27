@@ -13,6 +13,7 @@ import './cosmetiques.css';
 import type { Cosmetic, Matter } from '../core/cosmetics';
 import { titleStyleOf } from '../core/cosmetics';
 import { esc } from './ui';
+import { badgeMedal } from './badgeArt';
 
 // ───────────────────────── icônes au trait (grille 24, trait 1,6) ─────────────────────────
 const ICONS = {
@@ -33,24 +34,13 @@ const ICONS = {
   accent: 'M12 3s6 6.2 6 10.5a6 6 0 0 1-12 0C6 9.2 12 3 12 3z',
   vitrine: 'M4 8h5v10H4zM9.5 6h5v12h-5zM15 8h5v10h-5z',
   badge: 'M12 3l7 3v6c0 4.2-2.9 7.4-7 9c-4.1-1.6-7-4.8-7-9V6z',
-  // badges (mêmes identifiants qu'avant, src/core/cosmetics.ts BADGES)
-  'b-first': 'M7 4h10v16H7zM10 8h4M10 12h4',
-  'b-p100': 'M6 5h9v14H6zM9 3h9v14',
-  'b-p1000': 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 3M16 6h3a3 3 0 0 1-3 3M12 13v4M8.5 20h7',
-  'b-full': 'M5 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H5zM19 5h-4a2 2 0 0 0-2 2M19 5v12h-4a2 2 0 0 0-2 2',
-  'b-mythic': 'M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L3.3 9.3l6.1-.7z',
-  'b-secret': 'M12 4v16M4 12h16M6.3 6.3l11.4 11.4M17.7 6.3L6.3 17.7',
-  'b-trade': 'M7 8h11l-3-3M17 16H6l3 3',
-  'b-contract': 'M6 4h9l3 3v13H6zM9 12h6M9 16h4M14 4v4h4',
-  'b-streak': 'M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.2 2-4.2c.3 1.6 1 2.4 2 2.7C10.5 9 11 5.5 12 3z',
-  'b-half': 'M4 6h4v13H4zM9 4h4v15H9zM14.5 7l3.8-1 3 12.5-3.8 1z',
 } as const;
 export type IconName = keyof typeof ICONS;
 /** Icône au trait (prend la couleur du texte). */
 export const icon = (name: IconName, size = 16) =>
   `<svg class="ic" viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true"><path d="${ICONS[name]}"/></svg>`;
-/** Icône d'un badge (repli : l'écusson). */
-export const badgeIcon = (id: string, size = 13) => icon((`b-${id}` in ICONS ? `b-${id}` : 'badge') as IconName, size);
+/** Badge : le médaillon (src/game/badgeArt.ts, même gabarit que le labo 048). 20 px par défaut ; repli : médaillon neutre. */
+export const badgeIcon = (id: string, size = 20) => badgeMedal(id, size);
 
 // ───────────────────────────────── tracés des cadres ─────────────────────────────────
 const TAU = Math.PI * 2;
