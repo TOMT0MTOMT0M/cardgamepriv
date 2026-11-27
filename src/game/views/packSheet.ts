@@ -13,6 +13,7 @@ import { busyButton, cardTile, errMsg, esc, fmtN, fmtPct, fold, h, plural, popLa
 import { haptics } from '../../core/haptics';
 import { ACHIEVEMENTS, achievementDone, fmtCoins } from '../../core/economy';
 import { DEFAULT_OPENING, OPENINGS, type OpeningId } from '../../core/cosmetics';
+import { openingPreview } from './openingPreview';
 import '../progression.css';
 import { COIN_ICON } from './wallet';
 import { shownPity } from './status';
@@ -346,7 +347,7 @@ export function createPackSheet(
     if (sig === animSig) return;
     animSig = sig;
     animEl.innerHTML = `<div class="ps-bt">${tr('ps.anim')} <small>${tr('ps.animD')}</small></div><div class="ps-an-row" role="radiogroup" aria-label="${tr('ps.anim')}">${rows
-      .map((r) => `<button class="ps-an${r.on ? ' on' : ''}${r.ok ? '' : ' locked'}" role="radio" aria-checked="${r.on}" data-o="${r.o.id}"${r.ok ? '' : ' aria-disabled="true"'}><b>${esc(r.o.label)}</b><small>${esc(r.sub)}</small></button>`)
+      .map((r) => `<button class="ps-an${r.on ? ' on' : ''}${r.ok ? '' : ' locked'}" role="radio" aria-checked="${r.on}" data-o="${r.o.id}"${r.ok ? '' : ' aria-disabled="true"'}>${openingPreview(r.o.id)}<span class="ps-an-t"><b>${esc(r.o.label)}</b><small>${esc(r.sub)}</small></span></button>`)
       .join('')}</div>`;
   }
   animEl.addEventListener('click', async (e) => {
@@ -354,7 +355,12 @@ export function createPackSheet(
     if (!b || animBusy || b.classList.contains('on')) return;
     const o = OPENINGS.find((x) => x.id === b.dataset.o);
     if (!o) return;
-    if (b.classList.contains('locked')) return void toast(tr('ps.lockedHow', { how: o.how }), 'info');
+    if (b.classList.contains('locked')) {
+      // (27/11) l'aperçu se rejoue : on voit ce qu'on gagnera
+      const pv = b.querySelector('.pv');
+      if (pv) pv.replaceWith(pv.cloneNode(true));
+      return void toast(tr('ps.lockedHow', { how: o.how }), 'info');
+    }
     animBusy = true;
     try {
       await busyButton(b, backend.setOpening(o.id as OpeningId));

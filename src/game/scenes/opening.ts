@@ -1355,7 +1355,7 @@ export function createOpeningScene(): OpeningScene {
       const now = performance.now();
       if (now - tearSndAt >= RETROUSSE.grain * 1000 || p >= 1) {
         const fast = sstep(TEAR_SPEED.slow, TEAR_SPEED.fast, tearVel);
-        ctx.sfx.tear(DUR.instant / 1000 + Math.min(RETROUSSE.grainMax, tearSndAcc * 0.6), 0.035 + 0.05 * fast);
+        ctx.sfx.peel(DUR.instant / 1000 + Math.min(RETROUSSE.grainMax, tearSndAcc * 0.6), 0.035 + 0.05 * fast);
         tearSndAt = now;
         tearSndAcc = 0;
       }
@@ -1402,22 +1402,22 @@ export function createOpeningScene(): OpeningScene {
     const e = rollQ.shift()!;
     const pan = e.x * 0.5;
     if (e.k === 'lock') {
-      // le verrou de la soudure du haut : un claquement net
-      ctx.sfx.tear(RETROUSSE.verrou, 0.14);
-      ctx.sfx.tick(0.7, 0.3, 0);
+      // le verrou de la soudure du haut : un claquement net, puis le film qui commence à se décoller
+      ctx.sfx.seal(0.7, 0.3, 0);
+      ctx.sfx.peel(RETROUSSE.verrou, 0.14);
       haptics.pulse(14);
       shake.impulse(1.5);
     } else if (e.k === 'side') {
-      // un cran latéral : un tic par côté (gauche puis droite), plus grave quand il cède fort ; une vibration par paire
+      // un cran latéral : une soudure qui cède par côté (gauche puis droite), plus grave quand elle cède fort ; une vibration par paire
       // (le second cran d'une paire — même hauteur, autre côté, juste après le premier — ne vibre pas ; un cran seul, si)
-      ctx.sfx.tick(1.15 - 0.35 * e.f, 0.18 + 0.17 * e.f, pan);
+      ctx.sfx.seal(1.15 - 0.35 * e.f, 0.18 + 0.17 * e.f, pan);
       const m = rollSidePrev;
       const mate = !!m && m.x !== e.x && Math.abs(m.y - e.y) < 1e-3;
       if (!mate) haptics.pulse(6);
       rollSidePrev = mate ? null : e;
     } else if (e.k === 'top') {
-      // paquets de la soudure du haut après le verrou : des tics à peine audibles
-      ctx.sfx.tick(1.3 - 0.3 * e.f, 0.06 + 0.06 * e.f, pan);
+      // paquets de la soudure du haut après le verrou : des claquements à peine audibles
+      ctx.sfx.seal(1.3 - 0.3 * e.f, 0.06 + 0.06 * e.f, pan);
     }
   }
 
@@ -1454,7 +1454,7 @@ export function createOpeningScene(): OpeningScene {
         out.fromTo(bakeExit, { t: 0 }, { t: T, duration: T, ease: 'none' }, 0);
         // fin du lâcher (pas une chute) : un léger froissement du film
         const land = h.events?.find((e) => e.k === 'land' && e.t !== undefined);
-        if (land) out.call(() => ctx.sfx.tear(DUR.instant / 1000 + RETROUSSE.lacheGrain * land.f, 0.03 + 0.04 * land.f), [], Math.min(T, land.t!));
+        if (land) out.call(() => ctx.sfx.peel(DUR.instant / 1000 + RETROUSSE.lacheGrain * land.f, 0.03 + 0.04 * land.f), [], Math.min(T, land.t!));
       }
       out.to(B, { follow: 0, duration: RETROUSSE.lache, ease: EASE.glide }, 0).to(B, { y: -2.6, duration: RETROUSSE.tombe, ease: EASE.heave }, RETROUSSE.chute);
       // les cartes se soulèvent dans le sachet retroussé (même loi que la cuisson), ensemble
@@ -3206,8 +3206,11 @@ export function createOpeningScene(): OpeningScene {
           const fam: BakeFamily = s === 'retrousse' ? 'retrousse' : 'tear';
           if (fam === bakeFam) return;
           bakeFam = fam;
-          if (fam === 'retrousse') void loadBakes('retrousse').then(lateRoll);
-          else {
+          if (fam === 'retrousse') {
+            // (27/11) ses sons (livre `ouvertures`) se cuisent en même temps que ses cuissons se chargent
+            ctx.sfx.loadBook('ouvertures');
+            void loadBakes('retrousse').then(lateRoll);
+          } else {
             rollReady = false;
             toRelease.add('retrousse');
             releaseFamilies();
@@ -3231,6 +3234,7 @@ export function createOpeningScene(): OpeningScene {
         } else {
           // (27/11) Retroussé choisi : on ne charge QUE ses cuissons ; même attente bornée que la Déchirure
           bakeFam = 'retrousse';
+          ctx.sfx.loadBook('ouvertures');
           const first = loadBakes('retrousse');
           lap('sachet');
           const b0 = await Promise.race([first, new Promise<null>((r) => setTimeout(() => r(null), 1500))]);

@@ -108,8 +108,9 @@ export interface SweepO {
 /**
  * NIVEAUX des sons cuits (tous à −6 dBFS de crête) : étalonnés par mesure (sonie pondérée A, tools/ du chantier son V2)
  * pour qu'un appel `tick(1, 0.25)`, `thump(0.6)`, `chime(2, 0.22)`… garde la place qu'il avait dans le mix.
+ * (27/11) `peel` / `seal` (livre `ouvertures`) : même sonie que `foil` / `tick` à volume égal (mesure 350 Hz–6 kHz).
  */
-const LV = { ui: 0.16, tick: 0.85, air: 1.25, paper: 2.2, foil: 3.2, land: 1.2, thud: 1.5, boom: 1.1, chimeS: 6.5, chimeM: 5.6, chimeL: 6.2, note: 1.9, coin: 2, crack: 3.5 };
+const LV = { ui: 0.16, tick: 0.85, air: 1.25, paper: 2.2, foil: 3.2, land: 1.2, thud: 1.5, boom: 1.1, chimeS: 6.5, chimeM: 5.6, chimeL: 6.2, note: 1.9, coin: 2, crack: 3.5, peel: 3, seal: 0.75 };
 
 /**
  * (11/11) COULEUR SONORE PAR PACK : le même geste, une matière un peu différente selon le booster — alu plus vif et
@@ -889,6 +890,29 @@ export class Sfx {
       if (this.play('foil', { vol: vol * LV.foil, dur: d, offset: Math.random() * (tex.duration - d - 0.1), fadeIn: 0.004, rate: vary(0.06) * this.color.foil, wet: 0.06 })) return;
     }
     this.tearSynth(dur, vol);
+  }
+
+  /**
+   * (27/11) Film qui se DÉCOLLE le long d'un pli (Retroussé) : un morceau de la texture `peel` (livre `ouvertures`,
+   * cuit à la demande). Même API que `tear` ; tant que le livre n'est pas cuit, c'est la déchirure qui joue.
+   */
+  peel(dur = 0.3, vol = 0.05) {
+    const tex = this.bank.get('peel')?.[0];
+    if (tex) {
+      const d = Math.min(dur, tex.duration - 0.2);
+      if (this.play('peel', { vol: vol * LV.peel, dur: d, offset: Math.random() * (tex.duration - d - 0.1), fadeIn: 0.004, rate: vary(0.05) * this.color.foil, wet: 0.05 })) return;
+    }
+    this.tear(dur, vol);
+  }
+
+  /**
+   * (27/11) Une soudure qui cède (Retroussé : verrou, crans latéraux) : crépitements serrés et membrane du film. Même
+   * API que `tick` (`pitch` : hauteur relative), sans son débit limité (la scène espace déjà les claquements) ; tant que
+   * le livre `ouvertures` n'est pas cuit, c'est le tic qui joue.
+   */
+  seal(pitch = 1, vol = 0.25, pan = 0) {
+    const rate = Math.max(0.5, Math.min(2, pitch));
+    if (!this.play('seal', { rate, vol: vol * LV.seal * Math.pow(rate, 0.4), pan, wet: 0.06 })) this.tick(pitch, vol, pan);
   }
 
   /**

@@ -18,14 +18,51 @@
 .ps-an.locked { border-style: dashed; cursor: default; }
 .ps-an.locked b { color: var(--ink-3); }
 .ps-an:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ps-an-t { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 @media (max-width: 420px) {
   .ps-an-row { grid-template-columns: 1fr; }
-  .ps-an { flex-direction: row; align-items: baseline; gap: 10px; }
+  .ps-an { flex-direction: row; align-items: center; gap: 10px; }
+  .ps-an-t { flex-direction: row; align-items: baseline; gap: 10px; }
   .ps-an b { flex: none; min-width: 84px; }
 }
 .ps-docked .ps-an-row { grid-template-columns: 1fr; }
-.ps-docked .ps-an { flex-direction: row; align-items: baseline; gap: 10px; }
+.ps-docked .ps-an { flex-direction: row; align-items: center; gap: 10px; }
+.ps-docked .ps-an-t { flex-direction: row; align-items: baseline; gap: 10px; }
 .ps-docked .ps-an b { flex: none; min-width: 84px; }
+
+/*
+ * (27/11) APERÇU d'une ouverture (src/game/views/openingPreview.ts) : vignette au trait, une fois à l'affichage, en
+ * boucle sur l'ouverture choisie. Un seul cycle pour tous les éléments (--pv-t), durées = jetons de motion.ts.
+ */
+.pv { flex: none; width: 40px; height: 48px; color: var(--ink-2); overflow: visible; --pv-t: calc(var(--dur-emphatique) * 5); }
+.ps-an.locked .pv { opacity: 0.6; }
+.pv * { transform-box: fill-box; animation-duration: var(--pv-t); animation-timing-function: var(--ease-standard); animation-fill-mode: both; animation-delay: var(--dur-standard); }
+.ps-an.on .pv * { animation-iteration-count: infinite; }
+.pv-bag { fill: color-mix(in srgb, var(--ink) 16%, var(--panel-solid)); stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.pv-back { fill: none; stroke: currentColor; stroke-width: 1; stroke-dasharray: 2 1.5; opacity: 0.5; }
+.pv-crimp { fill: none; stroke: currentColor; stroke-width: 1; stroke-dasharray: 1 1; opacity: 0.7; }
+.pv-cards rect { fill: var(--panel-solid); stroke: var(--ink); stroke-width: 1; }
+.pv-dot { fill: var(--ink); stroke: color-mix(in srgb, var(--ink) 35%, transparent); stroke-width: 3; opacity: 0; transform-origin: center; }
+.pv-burst { fill: none; stroke: var(--ink); stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transform-origin: center; }
+.pv-lip { fill: var(--ink-2); stroke: var(--ink); stroke-width: 0.8; }
+/* Déchirure : le doigt glisse le long du haut, la bande part, les cartes montent */
+.pv-tear .pv-dot { animation-name: pv-tear-dot; }
+.pv-tear .pv-strip { animation-name: pv-tear-strip; transform-origin: right bottom; }
+.pv-tear .pv-cards { animation-name: pv-tear-cards; }
+.pv-tear .pv-burst { animation-name: pv-burst; }
+@keyframes pv-tear-dot { 0% { opacity: 0; transform: none; } 10% { opacity: 1; transform: none; } 45% { opacity: 1; transform: translateX(26px); } 55%, 100% { opacity: 0; transform: translateX(26px); } }
+@keyframes pv-tear-strip { 0%, 45% { opacity: 1; transform: none; } 62% { opacity: 0; transform: translate(4px, -7px) rotate(16deg); } 90% { opacity: 0; transform: none; } 100% { opacity: 1; transform: none; } }
+@keyframes pv-tear-cards { 0%, 50% { transform: none; } 72%, 88% { transform: translateY(-12px); } 100% { transform: none; } }
+@keyframes pv-burst { 0%, 45% { opacity: 0; transform: scale(0.4); } 55% { opacity: 1; } 75%, 100% { opacity: 0; transform: scale(1.25); } }
+/* Retroussé : le doigt descend, le film se retourne le long d'un pli roulé, les cartes restent debout puis se lèvent */
+.pv-roll .pv-dot { animation-name: pv-roll-dot; }
+.pv-roll .pv-film { animation-name: pv-roll-film; transform-origin: center bottom; }
+.pv-roll .pv-lip { animation-name: pv-roll-lip; }
+.pv-roll .pv-cards { animation-name: pv-roll-cards; }
+@keyframes pv-roll-dot { 0% { opacity: 0; transform: none; } 12% { opacity: 1; transform: none; } 60% { opacity: 1; transform: translateY(27px); } 70%, 100% { opacity: 0; transform: translateY(27px); } }
+@keyframes pv-roll-film { 0%, 14% { transform: none; } 60%, 90% { transform: scaleY(0.2); } 100% { transform: none; } }
+@keyframes pv-roll-lip { 0%, 14% { opacity: 1; transform: none; } 60%, 88% { opacity: 1; transform: translateY(28px); } 94% { opacity: 0; transform: translateY(28px); } 100% { opacity: 1; transform: none; } }
+@keyframes pv-roll-cards { 0%, 62% { transform: none; } 76%, 90% { transform: translateY(-3px); } 100% { transform: none; } }
 
 /* ── page Succès : la récompense « Ouverture » (petite pochette de booster) */
 .sc-cos.k-open i { width: 8px; height: 11px; border-radius: 2px; border: 1.5px solid currentColor; }
