@@ -51,7 +51,7 @@ export const fr = {
   'cp.seeks': 'la cherche',
   'cp.owners': { one: '<b>{n}</b> 👤', other: '<b>{n}</b> 👥' },
   'cp.asDup': '{n} en doublon',
-  'cp.online': 'en ligne',
+  'cp.online': 'actif récemment',
   'cp.forSaleT': 'En vente',
   'cp.avgT': 'Prix moyen des ventes :',
   'cp.avgD': { one: 'sur {n} vente · dernière {last}', other: 'sur {n} ventes · dernière {last}' },

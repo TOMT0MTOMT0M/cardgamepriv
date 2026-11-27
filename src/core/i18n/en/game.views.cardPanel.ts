@@ -52,7 +52,7 @@ export const en: PartOf<typeof fr> = {
   'cp.seeks': 'is looking for it',
   'cp.owners': { one: '<b>{n}</b> 👤', other: '<b>{n}</b> 👥' },
   'cp.asDup': '{n} as a duplicate',
-  'cp.online': 'online',
+  'cp.online': 'recently active',
   'cp.forSaleT': 'For sale',
   'cp.avgT': 'Average sale price:',
   'cp.avgD': { one: 'over {n} sale · last {last}', other: 'over {n} sales · last {last}' },

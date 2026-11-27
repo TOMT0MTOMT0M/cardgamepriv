@@ -32,6 +32,7 @@ import { wishersOfCard, wishesReady } from './wishes';
 import { wantsCard } from '../src/core/wishFams';
 import { fm } from '../src/core/msgs';
 import { invOf } from './inventory';
+import { ONLINE_MS } from '../src/core/online';
 
 /**
  * REFONTE DES ÉCHANGES (11/11) — règles : src/core/deals.ts.
@@ -44,8 +45,7 @@ import { invOf } from './inventory';
  * `get`, `pickOptions`) ; chaque requête renvoie `reads` (documents lus) — mesuré dans convex/deals.test.ts.
  */
 
-/** même fenêtre « en ligne » que la liste des joueurs (users.ts) */
-const ONLINE_MS = 6 * 60 * 1000;
+// « en ligne » : même fenêtre que la liste des joueurs (ONLINE_MS, src/core/online.ts, V3 : 12 min)
 const key = (c: { cardId: string; rarity: string }) => `${c.cardId}:${c.rarity}`;
 const guardOf = (u: Doc<'users'>) => ({ protected: u.tradeProtected, wishlist: u.wishlist });
 const cardName = (id: string) => catalogCard(id)?.name ?? id;

@@ -10,6 +10,7 @@ import { catalogEntry } from '../src/core/sets/themes';
 import { presenceOf, syncPresence, cosOf } from './presence';
 import { setWish } from './wishes';
 import { FAM_ROW, WISH_FAMS_MAX, famKeyValid } from '../src/core/wishFams';
+import { ONLINE_MS, SEEN_EVERY_MS } from '../src/core/online';
 
 /** Taille maximale de la liste d'envies. */
 export const WISHLIST_MAX = 300;
@@ -18,8 +19,8 @@ export const WISHLIST_MAX = 300;
  * n'écrit `lastSeenAt` qu'au plus toutes les 4 min : chaque écriture sur le joueur ré-exécutait toutes ses requêtes
  * (profil, économie, missions…) et celles de tout le club (amis, classement) — 75 % de la lecture de base du mois.
  */
-export const SEEN_EVERY_MS = 4 * 60 * 1000;
-const ONLINE_WINDOW_MS = 6 * 60 * 1000;
+// (V3, piste 10) 4 → 10 min, « en ligne » 6 → 12 min : SEEN_EVERY_MS et ONLINE_MS dans src/core/online.ts
+const ONLINE_WINDOW_MS = ONLINE_MS;
 
 /** Ce que `users.me` renvoie d'un joueur (aussi dans `session.get`, audit 12/11 E1-08). */
 export function meView(user: Doc<'users'>, now: number) {

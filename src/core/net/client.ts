@@ -8,6 +8,7 @@ import type { RarityId } from '../rarity';
 import type { MissionsState } from '../missions';
 import type { StreakState } from '../streak';
 import { InvMirror, shouldRebase, type InvRow } from './invDiff';
+import { ONLINE_MS } from '../online';
 import { clearInv, invKeyOf, loadFriendInv, loadInv, saveFriendInv, saveInv, type InvWhy, type KeptInv } from './invStore';
 
 /** réponse de `economy.state` */
@@ -170,8 +171,8 @@ type Listener = (state: NetState) => void;
 /** Profil sans les champs qui changent à chaque battement de cœur sans rien changer à l'écran. */
 const userSig = (u: MeProfile | null) => (u ? JSON.stringify({ ...u, nextDailyClaimAt: 0 }) : '');
 /** Amis sans `lastSeenAt` (change à chaque battement) ni l'ordre qui en découle. */
-/** « en ligne » = vu depuis moins de 6 min (même fenêtre que convex/users.ts, ONLINE_WINDOW_MS) */
-const ONLINE_WINDOW_MS = 6 * 60 * 1000;
+/** « en ligne » = vu depuis moins de 12 min (V3, même fenêtre que le serveur : src/core/online.ts) */
+const ONLINE_WINDOW_MS = ONLINE_MS;
 const friendsSig = (fs: FriendPresence[]) =>
   fs
     .map((f) => JSON.stringify([f._id, f.displayName, f.username, f.avatarUrl ?? '', f.totalPacksOpened, f.online, f.statusText ?? '', f.cos ?? null]))
@@ -848,6 +849,7 @@ class GameNetClient {
     // 4 min (convex/users.ts, SEEN_EVERY_MS) — 6 appels sur 7 ne servaient à rien. « En ligne » = vu depuis moins de
     // 6 min : il faut un battement au plus toutes les 6 − 4 = 2 min pour qu'un joueur actif ne paraisse jamais
     // hors ligne (une ouverture de booster décale l'écriture suivante) → 110 s, 3 fois moins d'appels.
+    // (V3, piste 10) écriture au plus toutes les 10 min, fenêtre de 12 min (src/core/online.ts) : même écart de 2 min.
     beat();
     this.beatNow = beat;
     this.heartbeatTimer = window.setInterval(beat, 110_000);

@@ -12,6 +12,7 @@ import { SURVEYS, SURVEY_ID, SURVEY_PREV_ID } from '../core/survey';
 import { siteUrl } from '../core/siteRoot';
 import { viewEvenements } from './events';
 import { viewAbonnements } from './abo';
+import { ONLINE_MS } from '../core/online';
 
 /**
  * DASHBOARD ADMIN (V2, 10/11) — /admin/, réservé à Tom et Hugo (vérifié côté serveur : convex/adminDash.ts).
@@ -567,7 +568,7 @@ async function viewJoueurs(v: HTMLElement) {
       `<p class="muted small">${rows.length} joueur${rows.length > 1 ? 's' : ''}</p>` +
       rows
         .map((p) => {
-          const on = Date.now() - p.lastSeenAt < 5 * 60_000;
+          const on = Date.now() - p.lastSeenAt < ONLINE_MS;
           return `<button type="button" class="player${p.bannedAt ? ' banned' : ''}" data-id="${esc(p.id)}">
           <span class="av">${p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="" loading="lazy">` : esc(p.name.slice(0, 1).toUpperCase())}<i class="dot${on ? ' on' : ''}"></i></span>
           <span class="who"><b>${esc(p.name)}</b><small>@${esc(p.username.replace(/^pw:/, ''))}${p.staff ? ' · <em>équipe</em>' : ''}${p.pw ? ' · pseudo' : ''}${p.bannedAt ? ' · <em class="red">banni</em>' : ''}</small><small class="muted">${on ? 'en ligne' : `vu ${ago(p.lastSeenAt)}`}${p.status ? ` · ${esc(p.status)}` : ''}</small></span>

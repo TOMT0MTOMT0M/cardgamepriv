@@ -16,9 +16,9 @@ export const fr = {
   'chat.privateOf': '{name} · privé',
   'chat.kGeneral': '01 Général',
   'chat.kDms': '02 Privés',
-  'chat.onlineCount': '{on} en ligne · {n} joueurs',
+  'chat.onlineCount': '{on} actifs · {n} joueurs',
   'chat.dmSub': 'Un message à un seul joueur',
-  'chat.dmOn': 'en ligne · vous deux seulement',
+  'chat.dmOn': 'actif récemment · vous deux seulement',
   'chat.dmOff': 'hors ligne · il le lira à son retour',
   'chat.muted': 'Conversation en sourdine : ni pastille ni notification. Toucher pour réactiver.',
   'chat.unmuted': 'Notifications actives pour cette conversation. Toucher pour la mettre en sourdine.',
@@ -61,7 +61,7 @@ export const fr = {
   'chat.player': 'Joueur',
   'chat.mutedBtn': 'Sourdine',
   'chat.notifsBtn': 'Notifs',
-  'chat.nOnline': '{n} en ligne',
-  'chat.onlineW': 'en ligne',
+  'chat.nOnline': '{n} actifs',
+  'chat.onlineW': 'actif récemment',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

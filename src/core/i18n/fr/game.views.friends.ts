@@ -3,8 +3,8 @@ import { addFr } from '../../i18n';
 
 export const fr = {
   'am.ref.rules': 'Invite tes potes avec ton lien : ils reçoivent <b>{n} boosters</b> en arrivant, et toi <b>{n} boosters</b> quand ils ont ouvert leurs {k} premiers.',
-  'am.online': 'en ligne',
-  'am.onlineSuffix': ', en ligne',
+  'am.online': 'actif récemment',
+  'am.onlineSuffix': ', actif récemment',
   'am.seen': 'vu {when}',
   'am.addShort': '+ Ami',
   'am.add': '+ Ajouter en ami',
@@ -69,6 +69,6 @@ export const fr = {
   'am.shareText': 'Viens ouvrir des boosters avec moi sur Bébou !',
   'am.selected': 'Sélectionné : copie-le (Ctrl+C).',
   'am.ask': 'Demander',
-  'am.countOnline': '{friends} · {n} en ligne',
+  'am.countOnline': '{friends} · {n} actifs',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

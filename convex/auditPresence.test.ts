@@ -97,7 +97,12 @@ describe('décision 8 — table de présence', () => {
     const pack = await t.mutation(api.packs.preparePack, { sessionToken: ids[1].token, packKind: 'bebou' });
     expect((await card(ids[1].userId))!.statusText).toMatch(/^Ouvre un/);
     await t.mutation(api.packs.revealPack, { sessionToken: ids[1].token, packId: pack._id });
-    expect(await card(ids[1].userId)).toMatchObject({ totalPacksOpened: 12, statusText: 'Contemple son tirage' });
+    // (V3, piste 10) plus de « Contemple son tirage » ; « vu à » récent : la carte n'est pas réécrite pour le seul
+    // compteur (rattrapé à la prochaine écriture)
+    expect(await card(ids[1].userId)).toMatchObject({ totalPacksOpened: 11, statusText: expect.stringMatching(/^Ouvre un/) });
+    await t.run((ctx) => ctx.db.patch(ids[1].userId, { statusText: 'Fait tourner La Presse' }));
+    await t.run((ctx) => syncPresence(ctx, ids[1].userId));
+    expect(await card(ids[1].userId)).toMatchObject({ totalPacksOpened: 12, statusText: 'Fait tourner La Presse' });
     // banni : sorti de la liste du club
     await t.run(async (ctx) => {
       await ctx.db.patch(ids[2].userId, { bannedAt: Date.now() });

@@ -8,6 +8,7 @@ import type { SeasonBoard } from '../core/seasons';
 import type { EcoBackend } from './eco';
 import type { ChatApi } from '../core/chat';
 import type { PackEvent } from '../core/events';
+import { ONLINE_MS } from '../core/online';
 
 /** Une ligne de collection : (carte, rareté) → nombre d'exemplaires. */
 export interface PlayerCard {
@@ -97,8 +98,8 @@ export interface Social {
   outgoing: FriendRequest[];
 }
 /** même fenêtre que le serveur (convex/users.ts) */
-// (perf 07/11) le serveur n'écrit « vu à » qu'au plus toutes les 4 min (convex/users.ts, SEEN_EVERY_MS)
-export const ONLINE_MS = 6 * 60 * 1000;
+// (V3, piste 10) le serveur n'écrit « vu à » qu'au plus toutes les 10 min : fenêtre de 12 min (src/core/online.ts)
+export { ONLINE_MS };
 export const isOnline = (f: { lastSeenAt: number }, now = Date.now()) => now - f.lastSeenAt < ONLINE_MS;
 /** Où j'en suis avec ce joueur : ami, demande envoyée / reçue, rien. */
 export function friendState(s: Social, userId: string): { kind: 'friend'; link: FriendLink } | { kind: 'out' | 'in'; req: FriendRequest } | { kind: 'none' } {

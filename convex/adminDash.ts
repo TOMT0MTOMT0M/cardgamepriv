@@ -15,6 +15,7 @@ import { SURVEY_ID } from '../src/core/survey';
 import { seenAtAll, syncPresence } from './presence';
 import { fm } from '../src/core/msgs';
 import { invOf } from './inventory';
+import { ONLINE_MS } from '../src/core/online';
 
 /**
  * DASHBOARD ADMIN (V2, 10/11) — page /admin/ (src/admin/), réservée à l'équipe : Tom et Hugo (users.isAdmin ou
@@ -26,7 +27,7 @@ import { invOf } from './inventory';
  * servent toujours aux lanceurs. Coût : rien en temps réel — le dashboard lit à la demande (bouton « Actualiser »).
  */
 
-const ONLINE_MS = 5 * 60_000;
+// (V3, piste 10) même fenêtre que le jeu (12 min, la présence n'est plus écrite qu'au plus toutes les 10 min)
 const DAY = 86_400_000;
 
 /**

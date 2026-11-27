@@ -514,14 +514,18 @@ describe('retours du 3 nov. : pity, envies, série de connexion', () => {
 });
 
 describe('perf 07/11 : moins de ré-exécutions', () => {
-  test('battement de cœur : aucune écriture si rien de neuf, « vu à » au plus toutes les 4 min', async () => {
+  test('battement de cœur : aucune écriture si rien de neuf, « vu à » au plus toutes les 10 min (V3)', async () => {
     const { t, alice } = await setup();
     await t.mutation(api.users.heartbeat, { sessionToken: alice.token }); // 1er : la série du jour
     const before = await t.run((ctx) => ctx.db.get(alice.userId));
     await t.mutation(api.users.heartbeat, { sessionToken: alice.token });
     const after = await t.run((ctx) => ctx.db.get(alice.userId));
     expect(after).toEqual(before); // document intact : les requêtes du joueur ne repartent pas
+    // (V3, piste 10) vu il y a 5 min : plus rien d'écrit ; il y a 11 min : réécrit
     await t.run((ctx) => ctx.db.patch(alice.userId, { lastSeenAt: Date.now() - 5 * 60 * 1000 }));
+    await t.mutation(api.users.heartbeat, { sessionToken: alice.token });
+    expect((await t.run((ctx) => ctx.db.get(alice.userId)))!.lastSeenAt).toBeLessThan(Date.now() - 4 * 60 * 1000);
+    await t.run((ctx) => ctx.db.patch(alice.userId, { lastSeenAt: Date.now() - 11 * 60 * 1000 }));
     await t.mutation(api.users.heartbeat, { sessionToken: alice.token });
     expect((await t.run((ctx) => ctx.db.get(alice.userId)))!.lastSeenAt).toBeGreaterThan(Date.now() - 60 * 1000);
   });
