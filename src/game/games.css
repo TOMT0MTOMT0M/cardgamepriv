@@ -59,6 +59,22 @@ body[data-route='jeux'] .views { pointer-events: auto; }
 .gm-tabs { align-self: flex-start; }
 .gm-body { display: flex; flex-direction: column; gap: 16px; }
 .gm-rules { line-height: 1.55; max-width: 820px; }
+/* (V3, lot social — moins de texte) règles en 3 étapes numérotées, le texte complet replié dessous */
+.gm-steps { display: flex; flex-direction: column; gap: 8px; max-width: 820px; }
+.gm-steps ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; border: 1px solid var(--gm-line); border-radius: var(--r-box); }
+.gm-steps li { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 12px 14px; }
+.gm-steps li + li { border-left: 1px solid var(--gm-line); }
+.gm-steps li b { flex: none; font: 600 26px/1 var(--title); color: var(--ink-3); }
+.gm-steps li span { font: 500 12.5px/1.3 var(--mono); color: var(--ink); }
+.gm-rules-full summary { width: max-content; padding: 6px 0; font: var(--gm-label); letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-3); cursor: pointer; }
+.gm-rules-full summary:hover { color: var(--ink); }
+.gm-rules-full .gm-rules { margin: 4px 0 0; }
+.gm-pack[data-i]::after { content: '↻'; margin-left: 6px; opacity: 0.6; font-weight: 400; }
+@media (max-width: 600px) {
+  .gm-steps li { flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px; }
+  .gm-steps li b { font-size: 20px; }
+  .gm-steps li span { font-size: 12px; }
+}
 
 /* accueil : les trois jeux */
 .gm-hub { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
