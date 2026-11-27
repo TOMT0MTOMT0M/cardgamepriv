@@ -12,6 +12,8 @@ Branche `v3-encheres` (tirée de `v2` à 0260592). Décidé : liste QOL validée
 - Clôture : carte → gagnant, pièces → vendeur (pas de frais, comme le marché) ; sans offre : carte rendue au vendeur. Vendeur et gagnant prévenus (push, `kind: 'trade'`).
 - Une enchère occupe une des 10 places de vente du marché ; la carte quitte la collection pendant l'enchère (séquestre, comme la vente à prix fixe) : ni forgée, ni échangée, ni vendue ailleurs.
 
+- (28/11, décision de Tom) **Prolongation anti-dernière-minute** : une offre reçue dans les 5 dernières minutes repousse la fin à « heure de l'offre + 5 min », autant de fois que nécessaire. La clôture de l'enchère prolongée est programmée à sa nouvelle fin (`ctx.scheduler.runAt` → `auctions.closeAt`, idempotente) ; la tâche horaire reste le filet. Champ `extended` (`v.optional`). Écran : « prolongée · 21 h 07 » dans la grille et la fiche ; ligne « Une offre dans les 5 dernières minutes prolonge l'enchère de 5 min. » dans la fiche et la feuille Vendre. Le texte de l'alerte acheteur « Clôture à 21 h » reste juste (heure prévue).
+
 ## Fait
 - Serveur (b952ba2) : table neuve `auctions` (index `by_status_ends`, `by_seller_status`, `by_bidder_status`), `convex/auctions.ts` (`board`, `create`, `bid`, `cancel`, `closeTick`), cron horaire à la minute 1 UTC (`crons.ts`, bloc à part), places partagées dans `convex/market.ts` (`openCount = sellSlotsUsed`). Messages FR + EN (erreurs `auctions.1-9`, journal `c.auction*`, notifications `n.auction*`).
 - Tests `convex/auctions.test.ts` (13) : dates de clôture (hiver / été / changement d'heure / passage d'année), surenchère, mise aux enchères (bornes, Bébou, carte déjà engagée / plus d'exemplaire, Forge refusée), offre / dépassé / remboursement / journal, pièces insuffisantes, deux offres concurrentes, retrait, clôture avec / sans offre, clôture rejouée (idempotence), notifications, coût, places partagées.
@@ -39,5 +41,5 @@ Branche `v3-encheres` (tirée de `v2` à 0260592). Décidé : liste QOL validée
 ## Reste
 - (fait, fusion de `v3-marche` c8ea65a) « Mes ventes N/10 » compte les enchères ; la mise aux enchères prévient les joueurs qui veulent la carte (`alertWishers(..., { auction: true })` : « X vend une carte que tu veux — {carte} aux enchères dès N pièces. Clôture à 21 h. », 1 par vendeur et par heure). `market.ts` ↔ `auctions.ts` s'importent l'un l'autre : `openCount` appelle `sellSlotsUsed` au moment de l'appel (pas à l'initialisation).
 - Pas de résultat de la semaine (vendue / gagnée / sans offre) à l'écran : notifications + journal des pièces seulement (`auctions.board` renvoie `recent`, prêt pour « Mon activité »).
-- Pas d'anti-« dernière seconde » (prolongation si offre à la fin) : à décider par Tom si besoin.
+- (fait le 28/11) prolongation de dernière minute — test : offre 20 h 57 → 21 h 02, 21 h 01 → 21 h 06, tâche de 21 h 01 sans effet sur la prolongée, deux clôtures programmées dont une seule clôt, offre à 20 h 50 = fin inchangée. Coût : une exécution programmée par prolongation.
 - Les enchères n'apparaissent pas (encore) dans la fiche d'une carte ni dans l'historique du Marché.

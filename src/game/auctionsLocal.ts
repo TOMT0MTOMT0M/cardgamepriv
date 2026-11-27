@@ -1,7 +1,7 @@
 import { fe } from '../core/errors';
 import { fm } from '../core/msgs';
 import { MARKET_MAX_OPEN, marketSuggested } from '../core/market';
-import { AUCTION_DAYS, auctionEndsAt, auctionMax, auctionMinStart, auctionNextMin, auctionProblem } from '../core/auctions';
+import { AUCTION_DAYS, auctionEndAfterBid, auctionEndsAt, auctionMax, auctionMinStart, auctionNextMin, auctionProblem } from '../core/auctions';
 import type { RarityId } from '../core/rarity';
 import type { AuctionBoard, AuctionItem } from './backend';
 
@@ -9,7 +9,7 @@ import type { AuctionBoard, AuctionItem } from './backend';
  * (V3) ENCHÈRES du mode démo — mêmes règles que convex/auctions.ts (src/core/auctions.ts). Les robots mettent quelques
  * doublons aux enchères et enchérissent : sur les tiennes (quelques secondes après la mise aux enchères), et contre toi
  * (parfois, tant que l'offre reste raisonnable : au plus 2× la valeur de la carte). La clôture se fait à la lecture
- * (pas de tâche programmée en démo). Branché par localBackend.ts.
+ * (pas de tâche programmée en démo), prolongation de dernière minute comprise. Branché par localBackend.ts.
  */
 export type DemoAuction = AuctionItem & { bidderId?: string };
 interface Card {
@@ -94,7 +94,8 @@ export function demoAuctions(d: DemoAuctionDeps) {
       const bot = bots[Math.floor(Math.random() * bots.length)];
       if (!bot) return;
       if (a.bidderId === 'me' && a.bid) d.coins(a.bid, lbl('c.auctionRefund', a));
-      Object.assign(a, { bid: amount, bidderId: bot.id, bidderName: bot.name, bids: a.bids + 1 });
+      const endsAt = auctionEndAfterBid(a.endsAt, Date.now());
+      Object.assign(a, { bid: amount, bidderId: bot.id, bidderName: bot.name, bids: a.bids + 1 }, endsAt !== a.endsAt ? { endsAt, extended: true } : {});
       d.sync();
       // et parfois une autre (contre un robot)
       if (a.sellerId === 'me') botBid(id, 0.3);
@@ -140,7 +141,8 @@ export function demoAuctions(d: DemoAuctionDeps) {
       if (!Number.isInteger(amount) || amount < min) throw new Error(fe('auctions.6', { p0: min }));
       if (amount > auctionMax(a.rarity)) throw new Error(fe('auctions.7', { p0: auctionMax(a.rarity) }));
       d.coins(-amount, lbl('c.auctionBid', a));
-      Object.assign(a, { bid: amount, bidderId: 'me', bidderName: d.meName(), bids: a.bids + 1 });
+      const endsAt = auctionEndAfterBid(a.endsAt, Date.now());
+      Object.assign(a, { bid: amount, bidderId: 'me', bidderName: d.meName(), bids: a.bids + 1 }, endsAt !== a.endsAt ? { endsAt, extended: true } : {});
       d.sync();
       botBid(id, 0.5);
     },

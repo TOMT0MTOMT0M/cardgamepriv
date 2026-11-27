@@ -27,6 +27,9 @@ export const fr = {
   'au.cDay': '{day} 21 h',
   'au.cIn': '{t}',
   'au.cDone': 'Terminée',
+  // (28/11) prolongation anti-dernière-minute
+  'au.cExt': 'prolongée · {t}',
+  'au.extRule': 'Une offre dans les 5 dernières minutes prolonge l’enchère de 5 min.',
   // mise aux enchères (feuille Vendre)
   'au.startA': 'Mise à prix',
   'au.startHint': 'Au moins {min} (valeur de Forge) · plafond {max}',
