@@ -169,7 +169,7 @@ describe('classement par différence', () => {
     expect(second.reads.docs).toBeLessThan(40);
   });
 
-  test('cron : personne depuis 20 min → rien relu au-delà de la présence, aucune ligne retirée', async () => {
+  test('cron : personne depuis 45 min (V3, cron à 30 min) → rien relu au-delà de la présence, aucune ligne retirée', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-11-26T10:00:00Z'));
     const t = convexTest(schema, modules);
@@ -179,7 +179,7 @@ describe('classement par différence', () => {
       await add(ctx, userId, THEMES[0].cards[0].id, 'common');
     });
     expect((await t.action(internal.profiles.refreshRanks, {})).saved).toBe(1);
-    vi.advanceTimersByTime(30 * 60_000);
+    vi.advanceTimersByTime(50 * 60_000);
     const plan = await countReads(t as never, profiles.rankPlan, {});
     expect((plan.result as { idle: boolean }).idle).toBe(true);
     expect(plan.reads.docs).toBe(1);
