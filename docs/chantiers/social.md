@@ -36,7 +36,7 @@ Branche `v3-social` (worktree `.wt-social`, tirée de `v2` 0260592). Captures av
 - Décidé : règles complètes gardées (repliées), pas supprimées.
 
 ## Vérifié
-- `npm run typecheck` OK ; `npm run check:i18n` = 0 ; `npm run test:server` (voir rapport).
+- `npm run typecheck` OK ; `npm run check:i18n` = 0 ; `npm run test:server` 54 fichiers, 320 tests OK (1 sauté) ; profil d'un ami à 360 px, texte × 1,35 : aucun bouton ne déborde.
 - Démo, Chrome sans fenêtre 390 / 1280 px : profils (à moi avec GIF + aurore + titre ; d'un ami), Amis (« ro » → 3
   suggestions), `#/jeux/duel/vs/bot-0` (« Défier Léa (robot) », adversaire choisi), Pack Battle et Battle Royale ; 0 erreur.
 
