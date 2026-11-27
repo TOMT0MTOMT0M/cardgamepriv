@@ -39,6 +39,7 @@ import {
   type PackChoice,
   type Stake,
   freeBetProblem,
+  parisHour,
 } from '../src/core/games';
 import { syncPresence } from './presence';
 import { pushBigPull } from './feed';
@@ -520,11 +521,14 @@ async function warnRoulette(ctx: MutationCtx, r: Doc<'rouletteRounds'>) {
   await ctx.db.patch(r._id, { warned: true });
   const subs = await ctx.db.query('pushSubs').collect();
   const users = new Set(subs.map((s) => s.userId as string));
-  const at = new Date(drawInstant(r));
-  const hour = Number(new Intl.DateTimeFormat('fr-FR', { hour: 'numeric', hour12: false, timeZone: 'Europe/Paris' }).format(at)) % 24;
+  // (V3) avant : `Number("20 h")` = NaN dans le titre
+  const hour = parisHour(drawInstant(r));
   const pot = r.carriedCoins + r.bets.reduce((a, b) => a + b.coins, 0);
+  // (V3, lot notifications) textes codés : rendus dans la langue de chaque joueur (avant : français pour tout le monde)
+  const n = r.bets.length;
+  const body = n ? fm(pot ? 'n.rouletteWarnBetsPot' : 'n.rouletteWarnBets', { n, coins: pot }) : fm(pot ? 'n.rouletteWarnEmptyPot' : 'n.rouletteWarnEmpty', { coins: pot });
   for (const id of users)
-    await notify(ctx, id as Id<'users'>, { kind: 'roulette', title: `Roulette : tirage de ${hour} h dans 10 min`, body: `${r.bets.length ? `${r.bets.length} joueur${r.bets.length > 1 ? 's' : ''} déjà en jeu` : 'Personne n’a encore misé'}${pot ? ` · ${pot} pièces au pot` : ''}. Viens miser ou regarder la bille tomber.`, url: '#/jeux/roulette', tag: 'roulette' }, { at: Date.now() });
+    await notify(ctx, id as Id<'users'>, { kind: 'roulette', title: fm('n.rouletteWarn', { hour }), body, url: '#/jeux/roulette', tag: 'roulette' }, { at: Date.now() });
 }
 
 /** Passage aux nouvelles règles (retours live 02) : chaque joueur récupère sa mise, le pot accumulé est conservé. */
@@ -569,6 +573,10 @@ async function drawRound(ctx: MutationCtx, r: Doc<'rouletteRounds'>, now: number
   for (const b of r.colorBets ?? []) if (b.paid === undefined) await addCoins(ctx, b.userId, b.coins, 'roulette', fm('c.rouletteColor', { colorId: b.color, rcolor: colorLabel(b.color) }));
   // pastille de l'onglet Jeux chez chaque joueur qui avait misé (le résultat est à voir)
   for (const id of new Set(r.bets.map((b) => b.userId))) await ctx.db.patch(id, { gamesNoticeAt: now });
+  // (V3, lot notifications) le résultat aux autres joueurs qui avaient misé (le gagnant a déjà le sien) : type « Jeux »
+  for (const id of new Set(r.bets.map((b) => b.userId)))
+    if (id !== bet?.userId)
+      await notify(ctx, id, { kind: 'game', title: fm('n.rouletteLost', { number }), body: bet ? fm('n.rouletteLostBody', { name: bet.name }) : fm('n.rouletteCarry'), url: '#/jeux/roulette', tag: 'roulette-result' }, { at: now });
   await ctx.db.patch(r._id, {
     status: 'drawn',
     drawnAt: now,

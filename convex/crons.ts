@@ -27,4 +27,9 @@ crons.interval('saisons : fin du mois', { hours: 1 }, internal.seasons.tick, {})
 // (convex/migrations.ts, purgeOld — aussi relancée à chaque mise en ligne)
 crons.daily('retention : boosters ouverts de plus de 2 jours, fil de plus de 30 jours', { hourUTC: 4, minuteUTC: 30 }, internal.migrations.purgeOld, {});
 
+// ── (V3, lot notifications) rappels push : « ta série s'arrête à minuit » à 20 h, « missions / cadeau du jour » de 9 h
+// à 21 h (heure de Paris, calculée dans push.remindTick : la tâche passe chaque heure pile et ne lit que les joueurs
+// repérés par l'index lastSeenAt dans une fenêtre d'une heure)
+crons.hourly('push : rappels série et missions', { minuteUTC: 0 }, internal.push.remindTick, {});
+
 export default crons;

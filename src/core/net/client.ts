@@ -1211,7 +1211,8 @@ class GameNetClient {
     await this.client!.mutation(api.push.unsubscribe, { sessionToken: this.requireToken(), endpoint });
   }
   public async pushSetPrefs(prefs: string[]) {
-    await this.client!.mutation(api.push.setPrefs, { sessionToken: this.requireToken(), prefs: prefs as never });
+    // (V3) `full` : ces réglages montrent tous les types, la liste fait foi pour les nouveaux (convex/push.ts, PREFS_V3)
+    await this.client!.mutation(api.push.setPrefs, { sessionToken: this.requireToken(), prefs: prefs as never, full: true });
   }
   public async pushTest() {
     return await this.client!.mutation(api.push.sendTest, { sessionToken: this.requireToken() });
