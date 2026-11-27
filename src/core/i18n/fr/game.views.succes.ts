@@ -48,5 +48,15 @@ export const fr = {
   'sc.lastTier': 'Dernier palier : {label}',
   'sc.ongoing': 'En cours',
   'sc.tierLow': 'palier {n}/{total}',
+  // (V3, 27/11) ouvertures de booster à gagner : aperçu sur le palier verrouillé et au déblocage
+  'sc.opWin': 'Ouverture à gagner : « {name} »',
+  'sc.opAt': 'Palier {n} · {label}',
+  'sc.opSoon': 'Ouverture à gagner · bientôt',
+  'sc.opSoonChip': 'Ouverture · bientôt',
+  'sc.opReplay': 'Revoir l’aperçu',
+  'sc.opMark': 'Une ouverture de booster à gagner',
+  'sc.opGot': 'Nouvelle ouverture : « {name} »',
+  'sc.opUse': 'L’utiliser',
+  'sc.opUsed': 'Ouverture « {name} » choisie pour tous tes boosters.',
 } as const satisfies Record<string, string | { one?: string; other: string }>;
 addFr(fr);

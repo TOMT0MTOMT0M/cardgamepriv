@@ -236,8 +236,13 @@ export const completionProgress = (s: CompletionSet, ownedIds: Set<string>) => s
 
 // ───────────────────────────────────────────── succès
 
-/** Paliers de récompense des succès, selon la difficulté. */
-export const ACHIEVEMENT_TIERS = [50, 150, 500, 2000] as const;
+/**
+ * Paliers de récompense des succès, selon la difficulté (1 = quelques jours … 5 = plusieurs mois).
+ * (V3, 27/11 — refonte des succès, docs/chantiers/succes.md) comptés en boosters, l'étalon `PACK_PRICE` :
+ * 1 B · 3 B · 8 B · 20 B · 50 B (au lieu de 50 / 150 / 500 / 2 000 pièces) ; le niveau 5 accueille les paliers très longs.
+ * Un palier déjà encaissé garde ce qu'il a donné (rien n'est repris ni recalculé).
+ */
+export const ACHIEVEMENT_TIERS = [PACK_PRICE, 3 * PACK_PRICE, 8 * PACK_PRICE, 20 * PACK_PRICE, 50 * PACK_PRICE] as const;
 
 /** Ce que les succès regardent (stats du profil + compteurs de l'économie). */
 export interface AchievementStats {
@@ -278,8 +283,8 @@ export interface Achievement {
   id: string;
   label: string;
   how: string;
-  /** 1..4 → 50 / 150 / 500 / 2 000 pièces (+ 0 / 1 / 3 / 5 boosters) */
-  tier: 1 | 2 | 3 | 4;
+  /** 1..5 → `ACHIEVEMENT_TIERS` pièces + `ACHIEVEMENT_PACKS` boosters (1 B / 3 B + 2 / 8 B + 5 / 20 B + 10 / 50 B + 20) */
+  tier: 1 | 2 | 3 | 4 | 5;
   stat: keyof AchievementStats;
   target: number;
   /**
@@ -473,6 +478,38 @@ export const ACHIEVEMENTS: Achievement[] = [
   A('wins-25', 'Conquérant', 'Gagne 25 batailles', 2, 'gamesWon', 25),
   A('wins-100', 'Imbattable', 'Gagne 100 batailles', 4, 'gamesWon', 100),
   A('roulette-3', 'Trois jackpots', 'Remporte 3 fois le pot de la roulette', 4, 'rouletteWins', 3),
+  /**
+   * (V3, 27/11 — refonte des succès, docs/chantiers/succes.md) PALIERS LONGS : au-dessus des échelles existantes, pour les
+   * joueurs qui les ont finies (ils se réclament comme les autres, rien n'est repris). Pièces + boosters selon l'effort
+   * (niveau 4 ou 5) ; pas de nouveau cosmétique (à créer par Tom, voir la fiche). Aucun id existant ne change.
+   */
+  A('packs-7500', 'Fabrique de sachets', 'Ouvre 7 500 boosters', 5, 'packsOpened', 7500),
+  A('packs-10000', 'Dix mille sachets', 'Ouvre 10 000 boosters', 5, 'packsOpened', 10000),
+  A('uniq-25000', 'Mémoire du monde', 'Possède 25 000 cartes différentes', 5, 'uniques', 25000),
+  A('uniq-30000', 'Presque tout', 'Possède 30 000 cartes différentes', 5, 'uniques', 30000),
+  A('world-4500', 'Atlas', 'Possède 4 500 cartes World différentes', 5, 'worldUniques', 4500),
+  A('gaming-7500', 'Platine', 'Possède 7 500 cartes Gaming différentes', 5, 'gamingUniques', 7500),
+  A('pop-15000', 'Panthéon pop', 'Possède 15 000 cartes Pop Culture différentes', 5, 'popUniques', 15000),
+  A('sport-6500', 'Temple de la renommée', 'Possède 6 500 cartes Sport différentes', 5, 'sportUniques', 6500),
+  A('leg-750', 'Réserve d’or', 'Possède 750 cartes 5★', 5, 'legendaries', 750),
+  A('myth-250', 'Constellation', 'Possède 250 cartes 6★', 5, 'mythics', 250),
+  A('full-150', 'Bibliothèque', 'Complète 150 albums', 4, 'fullSubthemes', 150),
+  A('full-250', 'Bibliothèque d’Alexandrie', 'Complète 250 albums', 5, 'fullSubthemes', 250),
+  A('trade-250', 'Bourse aux cartes', 'Conclus 250 échanges', 5, 'tradesDone', 250),
+  A('burn-10000', 'Fonderie', 'Brûle 10 000 doublons', 4, 'burned', 10000),
+  A('burn-25000', 'Soleil de forge', 'Brûle 25 000 doublons', 5, 'burned', 25000),
+  A('streak-150', 'Cent cinquante jours', '150 jours de connexion d’affilée', 4, 'streak', 150),
+  A('streak-365', 'Une année', '365 jours de connexion d’affilée', 5, 'streak', 365),
+  A('season-podium-6', 'Abonné au podium', 'Finis 6 saisons dans les 3 premiers', 5, 'seasonPodiums', 6),
+  A('season-6', 'Empire', 'Gagne 6 saisons du classement', 5, 'seasonWins', 6),
+  A('bebou-125', 'Bébou mythique', 'Obtiens 125 paliers de succès', 5, 'bebouLevel', 125),
+  A('all-3000', 'Omniscient', 'Possède 3 000 cartes différentes dans chaque thème', 5, 'allThemes', 3000),
+  A('games-500', 'Âme du casino', 'Joue 500 parties', 4, 'gamesPlayed', 500),
+  A('games-1000', 'Mille parties', 'Joue 1 000 parties', 5, 'gamesPlayed', 1000),
+  A('wins-250', 'Légende des batailles', 'Gagne 250 batailles', 5, 'gamesWon', 250),
+  A('roulette-10', 'Roi de la roulette', 'Remporte 10 fois le pot de la roulette', 5, 'rouletteWins', 10),
+  A('coins-250k', 'Salle des coffres', 'Gagne 250 000 pièces au total', 4, 'coinsEarned', 250000),
+  A('coins-1m', 'Millionnaire', 'Gagne 1 000 000 pièces au total', 5, 'coinsEarned', 1000000),
 ];
 // i18n-data:fin
 
@@ -482,7 +519,7 @@ export const achievementReward = (a: Achievement) => (a.cos ? 0 : ACHIEVEMENT_TI
  * Retours live 02 (§8) : récompense selon la difficulté du palier — pièces + BOOSTERS (jamais de cartes directes) ;
  * (retours live 6, C10) les paliers « cosmétique » ne donnent QUE leur cosmétique.
  */
-export const ACHIEVEMENT_PACKS = [0, 1, 3, 5] as const;
+export const ACHIEVEMENT_PACKS = [0, 2, 5, 10, 20] as const;
 export const achievementPacks = (a: Achievement) => (a.cos ? 0 : ACHIEVEMENT_PACKS[a.tier - 1]);
 
 /**
