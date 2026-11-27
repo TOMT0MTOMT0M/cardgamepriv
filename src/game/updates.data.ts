@@ -86,6 +86,15 @@ export const UPDATES: UpdateMonth[] = [
         ],
       },
       {
+        // (v2.1.43) défauts trouvés par les vérifs du 27/11 (notifications de nuit, feuille de vente, texte des doublons)
+        date: '28 nov.', title: '🔧 Notifications la nuit, vente au téléphone', tag: 'corrigé',
+        points: [
+          '🌙 Plus aucune notification en pleine nuit : entre 23 h et 8 h, elles attendent 8 h, comme promis dans les réglages. Le rappel de la roulette affiche aussi la bonne heure du tirage.',
+          '📱 Au téléphone, la feuille « Vendre ou échanger une carte » s’ouvre bien à l’écran (elle s’ouvrait en bas de la page).',
+          '🔨 À partir du 1er décembre, tes doublons sont « à forger ou à échanger » dans la Collection, avec un lien direct vers la Forge.',
+        ],
+      },
+      {
         // (v2.1.42) dernière carte sans illustration (image fournie par Hugo)
         date: '28 nov.', title: '🖼️ Jubelle a son illustration', tag: 'corrigé',
         points: [
