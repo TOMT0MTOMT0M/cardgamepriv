@@ -1632,7 +1632,11 @@ export function createOpeningScene(): OpeningScene {
         R.k = 1;
         R.s = 1;
       }, [], FENETRE.chute);
-      out.to(B, { follow: 0, duration: FENETRE.lache, ease: EASE.glide }, FENETRE.chute).to(B, { y: -2.6, duration: FENETRE.tombe, ease: EASE.heave }, FENETRE.chute);
+      // (retours de Tom 27/11) le sachet percé RECULE d'abord derrière la pile (il n'est pas ouvert en haut : tombant
+      // devant elle, on croyait voir les cartes sortir par le haut), puis il tombe
+      out.to(B, { follow: 0, duration: FENETRE.lache, ease: EASE.glide }, FENETRE.chute)
+        .to(B, { z: FENETRE.reculZ, duration: FENETRE.recul, ease: EASE.glide }, FENETRE.chute)
+        .to(B, { y: -2.6, duration: FENETRE.tombe, ease: EASE.heave }, FENETRE.chute + FENETRE.recul * 0.7);
       const qk = autoQuick() ? 1.6 : 1;
       tl.call(() => {
         const c = sideline(gsap.timeline());

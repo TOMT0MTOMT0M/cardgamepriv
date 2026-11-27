@@ -158,8 +158,10 @@ export const RETROUSSE = {
 /**
  * (27/11) FENÊTRE (scènes/opening.ts ; l'avancée de la pile, sa sortie et la chute du panneau viennent de la cuisson,
  * en-tête `window` de scripts/bake-tear/fenetre.mts — rien ici n'est lu par la cuisson). `auto` / `autoSerie` :
- * ouverture automatique (toucher, série) · `lache` : la main lâche le sachet (B.follow → 0) · `chute` : départ du sachet
- * percé · `tombe` : durée de sa chute (EASE.heave) · `range` : rangement des cartes · `pose` / `decale` : durée du
+ * ouverture automatique (toucher, série) · `lache` : la main lâche le sachet (B.follow → 0) · `chute` : la main lâche le
+ * sachet percé · `recul` / `reculZ` : il RECULE derrière la pile (durée, unités ; retours de Tom 27/11 : il n'est pas
+ * ouvert en haut, il ne doit pas tomber devant les cartes comme la Déchirure), puis tombe · `tombe` : durée de sa
+ * chute (EASE.heave), après le recul · `range` : rangement des cartes · `pose` / `decale` : durée du
  * rangement et décalage d'une carte à l'autre (ceux de la Déchirure) · `ouvert` : la pile est prête · `coup` : écart
  * mini entre deux coins qui percent · `grain` : écart mini entre deux grains du crépitement des fronts · `grainMax` :
  * durée maxi d'un grain · `sec` : durée du coup sec final (le dernier lien du contour).
@@ -169,6 +171,8 @@ export const FENETRE = {
   autoSerie: DUR.dramatique / 1000,
   lache: (2 * DUR.instant) / 1000,
   chute: 0.5,
+  recul: 0.45,
+  reculZ: -0.6,
   tombe: 0.85,
   range: 0.55,
   pose: 0.65,
