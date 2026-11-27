@@ -374,6 +374,8 @@ export const en: Dict = {
 
   // ───── src/game/views/shop.ts (à la main) ─────
   'shop.evLeft': 'left',
+  'shop.evRes': 'reserve',
+  'shop.evNext': '+1 in {time}',
 
   // ───── src/game/ui.ts (à la main) ─────
   'plural.booster': { one: '{n} booster', other: '{n} boosters' },
@@ -553,9 +555,12 @@ export const en: Dict = {
   'ps.openMy': 'OPEN MY {name}',
   'ps.drawn': 'Booster already drawn, not opened yet',
   'ps.next': 'The next one arrives in {time} · 1 every {min} min',
+  'ps.nextEv': 'The next one arrives in {time} · 1 per hour',
+  'ps.evDone': 'No more boosters before the event ends',
   'ps.openN': 'OPEN ×{n}',
   'ps.inReserve': { one: '{n} booster in reserve{max}', other: '{n} boosters in reserve{max}' },
   'ps.noLimit': 'no limit · balance {coins}',
+  'ps.evBuy': 'event reserve · balance {coins}',
   'ps.pitySure': 'Your next booster has a guaranteed 6★!',
   'ps.achHow': 'Achievement “{label}”: {how}',
   'ps.anim': 'Opening animation',

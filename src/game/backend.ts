@@ -7,7 +7,7 @@ import type { CosmeticChoice, OpeningId, PlayerStats } from '../core/cosmetics';
 import type { SeasonBoard } from '../core/seasons';
 import type { EcoBackend } from './eco';
 import type { ChatApi } from '../core/chat';
-import type { PackEvent } from '../core/events';
+import { EVENT_CAP, eventRegen, type EventStore, type PackEvent } from '../core/events';
 import { ONLINE_MS } from '../core/online';
 
 /** Une ligne de collection : (carte, rareté) → nombre d'exemplaires. */
@@ -296,6 +296,10 @@ export interface Me {
   packCap?: number;
   /** (ouverture 07/11) recharge ×2 jusqu'à cet instant */
   boostUntil?: number;
+  /** (V3, packs événement) réserve du booster d'événement enregistrée (`liveEventRegen()` pour l'instant présent) */
+  ev?: EventStore;
+  /** (V3) réserve maximale d'événement : 3, ou 5 pour un abonné ; absent = 3 */
+  evCap?: number;
   totalPacksOpened: number;
   /** pity 6★ : boosters d'affilée sans Mythique (src/core/pity.ts) */
   pityCount: number;
@@ -323,6 +327,10 @@ export interface Me {
 export const liveRegen = (u: Me, now = Date.now()): RegenState => applyRegen(u.packStored, u.packRegenAt, now, u.boostUntil, u.packCap);
 /** Réserve maximale du joueur (15 ; 20 pour un abonné). */
 export const packCapOfMe = (u: Me | null | undefined): number => u?.packCap ?? PACK_CAP;
+/** (V3, packs événement) réserve du booster de l'événement `e` à l'instant présent (1 / h, 3 max ou 5 pour un abonné) */
+export const liveEventRegen = (u: Me, e: Pick<PackEvent, 'id' | 'startAt' | 'endAt'>, now = Date.now()): RegenState => eventRegen(u.ev, e, now, u.evCap ?? EVENT_CAP);
+/** Réserve à l'instant présent pour un booster : celle de l'événement pour le booster d'un événement, sinon la normale. */
+export const liveReserve = (u: Me, e: Pick<PackEvent, 'id' | 'startAt' | 'endAt'> | null | undefined, now = Date.now()): RegenState => (e ? liveEventRegen(u, e, now) : liveRegen(u, now));
 
 export interface GameState {
   /** `online` : serveur Convex + Discord · `demo` : tout dans ce navigateur, amis robots */
@@ -464,6 +472,8 @@ export interface GameBackend {
    * abonnement léger à `events:current` ; démo : un événement d'exemple (src/core/events.ts, demoEvent).
    */
   watchEvents?(cb: (events: PackEvent[]) => void): () => void;
+  /** (V3, packs événement) acheter un booster de l'événement en cours (EVENT_PACK_PRICE pièces) : il rejoint sa réserve */
+  buyEventPack?(eventId: string): Promise<void>;
   /** ouverture en série : `count` boosters scellés d'un coup (les déjà scellés d'abord ; moins si la réserve manque) */
   preparePacks(req: PackRequest, count: number): Promise<SealedPack[]>;
   /** « Tout passer » : crédite plusieurs boosters montrés en un seul appel ; renvoie les ids crédités */

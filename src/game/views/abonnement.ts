@@ -5,7 +5,7 @@ import type { GameBackend } from '../backend';
 import type { Shell } from '../shell';
 import type { AboPage, AboPoll } from '../ecoExtras';
 import { BEBOU_CARD, SUB_EXTRA_PACKS, SUB_PRICE_EUR, bebouMediaProblem, subActive, subDaysLeft, subEndingSoon } from '../../core/abo';
-import { fmtLeft } from '../../core/events';
+import { EVENT_CAP, SUB_EXTRA_EVENT_PACKS, fmtLeft } from '../../core/events';
 import { PACK_CAP } from '../../core/packRegen';
 import { busyButton, errMsg, esc, h, toast } from '../ui';
 
@@ -41,6 +41,7 @@ export function createAbonnementView(backend: GameBackend, shell: Shell): Abonne
       <section class="ab-hero"></section>
       <div class="ab-perks">
         <div class="ab-perk">${ICO.packs}<b>${tr('ab.p1', { n: SUB_EXTRA_PACKS })}</b><span>${tr('ab.p1d', { a: PACK_CAP, b: PACK_CAP + SUB_EXTRA_PACKS })}</span></div>
+        <div class="ab-perk">${ICO.packs}<b>${tr('ab.p5', { n: SUB_EXTRA_EVENT_PACKS })}</b><span>${tr('ab.p5d', { a: EVENT_CAP, b: EVENT_CAP + SUB_EXTRA_EVENT_PACKS })}</span></div>
         <div class="ab-perk">${ICO.card}<b>${tr('ab.p2')}</b><span>${tr('ab.p2d')}</span></div>
         <div class="ab-perk">${ICO.vote}<b>${tr('ab.p3')}</b><span>${tr('ab.p3d')}</span></div>
         <div class="ab-perk">${ICO.vote}<b>${tr('ab.p4')}</b><span>${tr('ab.p4d')}</span></div>

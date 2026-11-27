@@ -13,10 +13,11 @@ import { applyRegen, fmtCountdown } from '../src/core/packRegen';
 import { bumpMissions } from './missions';
 import { pushBigPull } from './feed';
 import { pityAfter, pityForces } from '../src/core/pity';
-import { rollPackCoins } from '../src/core/economy';
-import { addForgeCoins, bumpWeekly } from './econLib';
+import { EVENT_PACK_PRICE, rollPackCoins } from '../src/core/economy';
+import { addCoins, addForgeCoins, bumpWeekly } from './econLib';
 import { queueDropShot } from './dropShots';
 import { liveEventOrThrow } from './events';
+import { eventCapOf, eventRegen, fmtLeft } from '../src/core/events';
 import { bumpChallenges } from './challenges';
 import { invRev } from './invRev';
 import { syncPresence } from './presence';
@@ -35,8 +36,25 @@ function secureRandomSeed(): number {
   return (arr[0] % 900000) + 100000;
 }
 
+/** Sorte d'un booster : `b` (Bebou Pack), `t:<thème>`, `e:<événement>` — un booster scellé d'avance PAR sorte. */
+type PackSort = { packKind?: 'theme' | 'bebou'; themeId?: string; eventId?: Id<'packEvents'> };
+const sortKey = (p: PackSort) => (p.eventId ? `e:${p.eventId}` : (p.packKind ?? 'bebou') === 'theme' ? `t:${p.themeId ?? ''}` : 'b');
+/** boosters scellés du joueur (en pratique 0 à 3 : un d'avance par sorte ouverte, plus un éventuel booster abandonné) */
+const sealedOf = (ctx: MutationCtx, userId: Id<'users'>) =>
+  ctx.db.query('packOpens').withIndex('by_user_status', (q) => q.eq('userId', userId).eq('status', 'sealed')).take(12);
+
+/** (V3, packs événement) réserve d'événement du joueur pour `ev`, recharge comprise (src/core/events.ts) */
+const evReserve = (user: Doc<'users'>, ev: Doc<'packEvents'>, now: number) =>
+  eventRegen(user.ev, { id: ev._id, startAt: ev.startAt, endAt: ev.endAt }, now, eventCapOf(user, now));
+/** réserve normale, recharge comprise ; `free` = ce qui n'est pas déjà réservé par un booster scellé d'avance */
+function normalReserve(user: Doc<'users'>, now: number) {
+  const r = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil, packCapOf(user, now));
+  return { ...r, free: r.balance - Math.max(0, user.packAhead ?? 0) };
+}
+
 /**
  * Returns the player's currently staged ("sealed") pack if one is already prepared.
+ * (V3) Gardé pour les vieux onglets ; le nouveau client lit `sealedMine` une fois au démarrage (pas d'abonnement).
  */
 export const getSealedPack = query({
   args: { sessionToken: v.optional(v.string()) },
@@ -48,6 +66,19 @@ export const getSealedPack = query({
       .query('packOpens')
       .withIndex('by_user_status', (q) => q.eq('userId', userId).eq('status', 'sealed'))
       .first();
+  },
+});
+
+/**
+ * (V3, piste Convex 9) Boosters scellés du joueur (abandonnés et scellés d'avance), lus UNE fois au démarrage du client
+ * (`client.query`, pas d'abonnement : `getSealedPack` se relançait deux fois par booster).
+ */
+export const sealedMine = query({
+  args: { sessionToken: v.optional(v.string()) },
+  handler: async (ctx, { sessionToken }) => {
+    const userId = await getUserIdByToken(ctx, sessionToken);
+    if (!userId) return [];
+    return await ctx.db.query('packOpens').withIndex('by_user_status', (q) => q.eq('userId', userId).eq('status', 'sealed')).take(12);
   },
 });
 
@@ -74,18 +105,29 @@ async function eventEn(ctx: MutationCtx, id: Id<'packEvents'> | undefined): Prom
  * `tail` : présence et rappel « réserve pleine » tout de suite ; une série (`preparePacks`) les pose une fois à la fin
  * (même résultat : seul le dernier état compte).
  */
-async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme' | 'bebou' | undefined, themeId: string | undefined, allowExisting = true, eventId?: Id<'packEvents'>, tail = true) {
+/**
+ * (V3) `lookup` : chercher d'abord un booster déjà scellé (preparePack) — une série le fait une fois avant sa boucle, un
+ * scellé d'avance s'en passe. `ahead` : (piste Convex 9) booster scellé d'avance par `openPack` — RÉSERVÉ (compté dans
+ * `packAhead` / `ev.ahead`), débité seulement à son ouverture (revealOne), sans statut « Ouvre un… » ; il garde le pity
+ * affiché d'avant lui (`pityHold`).
+ */
+type PrepOpts = { lookup?: boolean; tail?: boolean; ahead?: boolean };
+async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme' | 'bebou' | undefined, themeId: string | undefined, eventId: Id<'packEvents'> | undefined, opts: PrepOpts = {}): Promise<Doc<'packOpens'>> {
+  const { lookup = true, tail = true, ahead = false } = opts;
+  const want = sortKey(eventId ? { eventId } : { packKind: packKind ?? 'bebou', themeId: packKind === 'theme' ? themeById(themeId ?? '')?.id ?? themeId : undefined });
 
-  // (26/11, coût) relu seulement s'il peut servir (une série le cherche une fois, avant sa boucle)
-  const existingSealed = allowExisting
-    ? await ctx.db
-        .query('packOpens')
-        .withIndex('by_user_status', (q) => q.eq('userId', user._id).eq('status', 'sealed'))
-        .first()
-    : null;
-
-  if (existingSealed) {
-    return existingSealed;
+  // (V3, piste 9) un booster scellé d'avance PAR SORTE : celui de la sorte demandée d'abord ; puis un booster abandonné
+  // en cours d'ouverture (n'importe quelle sorte, rouvert d'abord comme avant — anti-reroll), ou d'avance d'un
+  // événement fini (« un booster tiré pendant l'événement reste ouvrable après la fin »)
+  const sealed = lookup ? await sealedOf(ctx, user._id) : [];
+  const same = sealed.find((p) => sortKey(p) === want);
+  if (same) return same;
+  for (const p of sealed) {
+    if (!p.ahead) return p;
+    if (p.eventId) {
+      const e = await ctx.db.get(p.eventId);
+      if (!e || Date.now() >= e.endAt) return p;
+    }
   }
 
   // (11/11) booster du moment : seulement pendant l'événement, pool relu en base (convex/events.ts, src/core/events.ts)
@@ -105,19 +147,30 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     throw new ConvexError(fe('packs.1'));
   }
 
-  // recharge accumulée depuis la dernière fois (1 booster / 5 min, 15 max), puis on dépense
+  // recharge accumulée depuis la dernière fois (1 booster / 5 min, 15 max), puis on dépense — (V3) un booster
+  // d'événement dépense SA réserve (1 / h, 3 max, 5 pour un abonné), plus la réserve normale
   const now = Date.now();
-  const regen = applyRegen(user.packBalance, user.packRegenAt ?? user.lastSeenAt, now, user.regenBoostUntil, packCapOf(user, now));
-  if (regen.balance <= 0) {
-    throw new ConvexError(fe('packs.2', { p0: fmtCountdown((regen.nextAt ?? now) - now) }));
+  let reserve: Partial<Doc<'users'>>;
+  if (ev) {
+    const r = evReserve(user, ev, now);
+    if (r.balance - r.ahead <= 0) throw new ConvexError(r.nextAt ? fe('packs.4', { p0: ev.name, p1: fmtLeft(r.nextAt - now) }) : fe('packs.5', { p0: ev.name }));
+    reserve = { ev: { id: ev._id, n: ahead ? r.balance : r.balance - 1, at: r.regenAt, ahead: r.ahead + (ahead ? 1 : 0) } };
+  } else {
+    const r = normalReserve(user, now);
+    if (r.free <= 0) {
+      // tout ce qui reste est déjà scellé d'avance (une autre sorte) : c'est lui qui s'ouvre
+      const other = sealed.find((p) => p.ahead && !p.eventId);
+      if (other) return other;
+      throw new ConvexError(fe('packs.2', { p0: fmtCountdown((r.nextAt ?? now) - now) }));
+    }
+    reserve = ahead ? { packAhead: Math.max(0, user.packAhead ?? 0) + 1 } : { packBalance: r.balance - 1, packRegenAt: r.regenAt };
   }
 
   await patchLive(ctx, user, {
-    packBalance: regen.balance - 1,
-    packRegenAt: regen.regenAt,
+    ...reserve,
     lastSeenAt: now,
     ...(godLeft > 0 ? { godPacks: godLeft - 1 } : {}),
-    statusText: `Ouvre un ${ev ? `booster ${ev.name}` : req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…`,
+    ...(ahead ? {} : { statusText: `Ouvre un ${ev ? `booster ${ev.name}` : req.kind === 'bebou' ? BEBOU_PACK.booster : `booster ${themeById(req.themeId!)!.booster}`}…` }),
   });
   if (tail) await prepareTail(ctx, user);
 
@@ -183,11 +236,13 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     });
   }
 
-  await patchLive(ctx, user, { pityCount: pityAfter(pity, rolledCards.map((c) => c.rarity)) });
+  const pityNext = pityAfter(pity, rolledCards.map((c) => c.rarity));
+  // (piste 9) d'avance : le compteur affiché reste celui d'avant ce booster jusqu'à son ouverture (users.ts, meView)
+  await patchLive(ctx, user, { pityCount: pityNext, ...(ahead ? { pityHold: { raw: pityNext, shown: user.pityHold?.raw === pity ? user.pityHold.shown : pity } } : {}) });
 
-  const packId = await ctx.db.insert('packOpens', {
+  const doc = {
     userId: user._id,
-    status: 'sealed',
+    status: 'sealed' as const,
     maxRarity,
     cards: rolledCards,
     createdAt: now,
@@ -197,9 +252,12 @@ async function prepareOne(ctx: MutationCtx, user: Doc<'users'>, packKind: 'theme
     coins: rollPackCoins(req.kind, secureRandomFloat),
     ...(rolled.god ? { god: true } : {}),
     ...(ev ? { eventId: ev._id, eventName: ev.name } : {}),
-  });
+    ...(ahead ? { ahead: true } : {}),
+  };
+  const packId = await ctx.db.insert('packOpens', doc);
 
-  return (await ctx.db.get(packId))!;
+  // (V3, coût) le booster tel qu'écrit, sans le relire
+  return { _id: packId, _creationTime: now, ...doc };
 }
 
 /** présence (statut « Ouvre un booster… » vu des autres) et rappel « réserve pleine », sur la copie à jour du joueur */
@@ -219,7 +277,7 @@ export const preparePack = mutation({
   },
   handler: async (ctx, { sessionToken, packKind, themeId, eventId }) => {
     const user = { ...(await requireUser(ctx, sessionToken)) };
-    return await prepareOne(ctx, user, packKind, themeId, true, eventId);
+    return await prepareOne(ctx, user, packKind, themeId, eventId);
   },
 });
 
@@ -238,19 +296,38 @@ export const preparePack = mutation({
  * (26/11, coût) `user` = copie du joueur tenue à jour (convex/liveUser.ts), jamais relue ; `tail` : présence tout de
  * suite (une série la pose une fois à la fin). `credited` : ce booster vient d'être crédité (pas déjà révélé).
  */
-async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packOpens'>, tail = true): Promise<{ pack: Doc<'packOpens'>; credited: boolean }> {
+async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packOpens'>, tail = true): Promise<{ pack: Doc<'packOpens'>; credited: boolean; debited: boolean }> {
   const pack = await ctx.db.get(packId);
 
   if (!pack || pack.userId !== user._id) {
     throw new ConvexError(fe('packs.3'));
   }
   if (pack.status === 'revealed') {
-    return { pack, credited: false };
+    return { pack, credited: false, debited: false };
   }
 
   const now = Date.now();
   const revealed = { status: 'revealed', revealedAt: now } as const;
   await ctx.db.patch(pack._id, revealed);
+
+  // (V3, piste Convex 9) booster scellé d'avance : il était réservé, il est débité maintenant (recharge appliquée
+  // d'abord, comme au scellage d'un booster ordinaire) ; le pity affiché le rattrape
+  let debited = false;
+  if (pack.ahead) {
+    if (pack.eventId) {
+      const st = user.ev;
+      if (st && st.id === pack.eventId) {
+        const e = await ctx.db.get(pack.eventId);
+        const r = e ? evReserve(user, e, now) : { balance: st.n, regenAt: st.at, ahead: st.ahead ?? 0 };
+        await patchLive(ctx, user, { ev: { id: st.id, n: Math.max(0, r.balance - 1), at: r.regenAt, ahead: Math.max(0, r.ahead - 1) } });
+      }
+    } else {
+      const r = normalReserve(user, now);
+      await patchLive(ctx, user, { packBalance: Math.max(0, r.balance - 1), packRegenAt: r.regenAt, packAhead: Math.max(0, (user.packAhead ?? 0) - 1) });
+      debited = true;
+    }
+    if (user.pityHold) await patchLive(ctx, user, { pityHold: undefined });
+  }
 
   await patchLive(ctx, user, {
     totalPacksOpened: user.totalPacksOpened + 1,
@@ -260,6 +337,7 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
     ...(pack.god ? { statusText: 'Vient d’ouvrir un GOD PACK' } : {}),
   });
   if (tail) await syncPresence(ctx, user._id, 0, user);
+  if (tail && debited) await scheduleReserveFull(ctx, user._id, user);
   if (pack.god)
     await ctx.db.insert('activityFeed', {
       userId: user._id,
@@ -346,11 +424,31 @@ async function revealOne(ctx: MutationCtx, user: Doc<'users'>, packId: Id<'packO
     packKey: pack.eventId ? 'event' : pack.packKind === 'theme' && pack.themeId ? pack.themeId : 'bebou',
     cards: pack.cards.map((c) => ({ cardId: c.cardId, rarity: c.rarity, isNew: c.isNew })),
   }, true);
-  // défis entre amis en cours (convex/challenges.ts) : seulement les boosters scellés après le départ du défi
-  await bumpChallenges(ctx, user._id, pack.createdAt, pack.cards.map((c) => ({ rarity: c.rarity, isNew: c.isNew })));
+  // défis entre amis en cours (convex/challenges.ts) : seulement les boosters scellés après le départ du défi — (V3) un
+  // booster scellé d'avance compte à son ouverture (sinon le 1er booster après un défi accepté ne compterait pas)
+  await bumpChallenges(ctx, user._id, pack.ahead ? now : pack.createdAt, pack.cards.map((c) => ({ rarity: c.rarity, isNew: c.isNew })));
 
   // (26/11, coût) le booster tel qu'écrit, sans le relire
-  return { pack: { ...pack, ...revealed }, credited: true };
+  return { pack: { ...pack, ...revealed }, credited: true, debited };
+}
+
+/**
+ * (V3, piste Convex 9) Scelle d'avance le booster suivant de la même sorte que `pack` (qui vient d'être crédité) : le
+ * prochain « Ouvrir » de cette sorte n'appelle plus `preparePack`. Rien si une série de cette sorte attend encore (ses
+ * boosters sont déjà scellés), si la réserve est vide ou l'événement fini. Un booster d'avance déjà là (autre onglet)
+ * est rendu tel quel.
+ */
+async function sealAhead(ctx: MutationCtx, user: Doc<'users'>, pack: Doc<'packOpens'>): Promise<Doc<'packOpens'> | null> {
+  const key = sortKey(pack);
+  const same = (await sealedOf(ctx, user._id)).filter((p) => sortKey(p) === key);
+  if (same.some((p) => !p.ahead)) return null;
+  if (same.length) return same[0];
+  try {
+    return await prepareOne(ctx, user, pack.packKind ?? 'bebou', pack.themeId, pack.eventId, { lookup: false, tail: false, ahead: true });
+  } catch (e) {
+    if (e instanceof ConvexError) return null;
+    throw e;
+  }
 }
 
 export const revealPack = mutation({
@@ -361,6 +459,38 @@ export const revealPack = mutation({
   handler: async (ctx, { sessionToken, packId }) => {
     const user = { ...(await requireUser(ctx, sessionToken)) };
     return (await revealOne(ctx, user, packId)).pack;
+  },
+});
+
+/**
+ * (V3, piste Convex 9) UN BOOSTER = UNE MUTATION. Crédite le booster montré (comme `revealPack`) ET, dans la même
+ * mutation, scelle d'avance le suivant de la même sorte (`next` : faux pendant une série dont d'autres boosters
+ * attendent). Le joueur est lu et écrit une fois, `session:get` relancé une fois, au lieu de deux (preparePack puis
+ * revealPack). `revealPack` / `preparePack` restent pour les vieux onglets.
+ */
+export const openPack = mutation({
+  args: { sessionToken: v.string(), packId: v.id('packOpens'), next: v.optional(v.boolean()) },
+  handler: async (ctx, { sessionToken, packId, next }) => {
+    const user = { ...(await requireUser(ctx, sessionToken)) };
+    const { pack, credited, debited } = await revealOne(ctx, user, packId, false);
+    const ahead = credited && next !== false ? await sealAhead(ctx, user, pack) : null;
+    if (credited) await syncPresence(ctx, user._id, 0, user);
+    if (debited) await scheduleReserveFull(ctx, user._id, user);
+    return { pack, next: ahead };
+  },
+});
+
+/** (V3, packs événement) Acheter un booster d'événement (10 × le prix d'un booster) : il rejoint la réserve de l'événement. */
+export const buyEventPack = mutation({
+  args: { sessionToken: v.string(), eventId: v.id('packEvents') },
+  handler: async (ctx, { sessionToken, eventId }) => {
+    const user = { ...(await requireUser(ctx, sessionToken)) };
+    const ev = await liveEventOrThrow(ctx, eventId);
+    const now = Date.now();
+    await addCoins(ctx, user._id, -EVENT_PACK_PRICE, 'shop', fm('c.shop', { n: 1 }), { live: user });
+    const r = evReserve(user, ev, now);
+    await patchLive(ctx, user, { ev: { id: ev._id, n: r.balance + 1, at: r.regenAt, ahead: r.ahead } });
+    return { packs: r.balance + 1 };
   },
 });
 
@@ -386,11 +516,15 @@ export const preparePacks = mutation({
     // « réserve pleine » posés une fois à la fin de la série
     const user = { ...(await requireUser(ctx, sessionToken)) };
     const n = Math.max(1, Math.min(10, Math.floor(count)));
-    const out = (await ctx.db.query('packOpens').withIndex('by_user_status', (q) => q.eq('userId', user._id).eq('status', 'sealed')).take(n)) as Doc<'packOpens'>[];
+    // (V3, piste 9) déjà scellés : ceux de la sorte demandée (dont celui d'avance), puis un booster abandonné ; les
+    // boosters d'avance des AUTRES sortes restent pour leur sorte
+    const want = sortKey(eventId ? { eventId } : { packKind: packKind ?? 'bebou', themeId: packKind === 'theme' ? themeById(themeId ?? '')?.id ?? themeId : undefined });
+    const all = await sealedOf(ctx, user._id);
+    const out = [...all.filter((p) => sortKey(p) === want), ...all.filter((p) => sortKey(p) !== want && !p.ahead)].slice(0, n);
     let sealed = 0;
     while (out.length < n) {
       try {
-        out.push(await prepareOne(ctx, user, packKind, themeId, false, eventId, false));
+        out.push(await prepareOne(ctx, user, packKind, themeId, eventId, { lookup: false, tail: false }));
         sealed++;
       } catch (e) {
         if (!out.length) throw e;
@@ -410,12 +544,15 @@ export const revealPacks = mutation({
     const user = { ...(await requireUser(ctx, sessionToken)) };
     const done: string[] = [];
     let credited = false;
+    let debited = false;
     for (const id of packIds.slice(0, 12)) {
       const p = await revealOne(ctx, user, id, false);
       done.push(p.pack._id);
       credited ||= p.credited;
+      debited ||= p.debited;
     }
     if (credited) await syncPresence(ctx, user._id, 0, user);
+    if (debited) await scheduleReserveFull(ctx, user._id, user);
     return done;
   },
 });

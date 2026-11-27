@@ -97,6 +97,55 @@ describe('coût des boosters', () => {
   });
 });
 
+/**
+ * (V3, piste Convex 9) UN BOOSTER EN RÉGIME ÉTABLI. Avant : `preparePack` puis `revealPack` (deux mutations, chacune
+ * écrit le joueur et sa présence, donc relance `session:get`), et l'abonnement `getSealedPack` relancé deux fois.
+ * Après : `openPack` seul (le booster suivant est déjà scellé d'avance, servi par le client sans appel), `session:get`
+ * relancé une fois, plus d'abonnement `getSealedPack` (lu une fois au démarrage : `sealedMine`).
+ * Documents écrits = documents distincts touchés par la mutation (Convex écrit un document une fois par mutation).
+ */
+test('piste 9 : un booster = une mutation (avant / après)', async () => {
+  const written = (r: Reads) => new Set(r.writes.filter((w) => w.op !== 'insert').map((w) => w.id)).size + r.writes.filter((w) => w.op === 'insert').length;
+  const tok = { sessionToken: 'tok' };
+
+  // AVANT : preparePack + revealPack, abonnements relancés à chaque écriture du joueur
+  const t1 = convexTest(schema, modules);
+  await seed(t1);
+  await t1.mutation(api.packs.revealPack, { ...tok, packId: (await t1.mutation(api.packs.preparePack, { ...tok, packKind: 'bebou' }))._id }); // 1er booster (froid)
+  const prep = await countReads<never, { _id: string }>(t1 as never, packs.preparePack, { ...tok, packKind: 'bebou' });
+  const sealedAfterPrep = (await countReads(t1 as never, packs.getSealedPack, tok)).reads;
+  const rev = await countReads(t1 as never, packs.revealPack, { ...tok, packId: prep.result._id });
+  const sealedAfterRev = (await countReads(t1 as never, packs.getSealedPack, tok)).reads;
+  const sess1 = (await countReads(t1 as never, session.get, tok)).reads;
+  const before = {
+    calls: 2,
+    bytes: prep.reads.bytes + rev.reads.bytes,
+    written: written(prep.reads) + written(rev.reads),
+    reruns: 2 * sess1.bytes + sealedAfterPrep.bytes + sealedAfterRev.bytes,
+  };
+
+  // APRÈS : openPack seul (crédite + scelle d'avance)
+  const t2 = convexTest(schema, modules);
+  await seed(t2);
+  const first = await t2.mutation(api.packs.preparePack, { ...tok, packKind: 'bebou' });
+  const warm = await t2.mutation(api.packs.openPack, { ...tok, packId: first._id }); // 1er booster (froid) : scelle le suivant
+  const open = await countReads<never, { next: { _id: string } | null }>(t2 as never, packs.openPack, { ...tok, packId: warm.next!._id });
+  expect(open.result.next).not.toBeNull();
+  const sess2 = (await countReads(t2 as never, session.get, tok)).reads;
+  const after = { calls: 1, bytes: open.reads.bytes, written: written(open.reads), reruns: sess2.bytes };
+
+  const ko = (n: number) => `${(n / 1000).toFixed(1)} Ko`;
+  const tot = (x: typeof before) => x.bytes + x.reruns;
+  console.log(
+    `[mesure coût] piste 9, un booster en régime établi\n` +
+      `AVANT  ${before.calls} mutations · lu ${ko(before.bytes)} · ${before.written} documents écrits · relances (session:get ×2, getSealedPack ×2) ${ko(before.reruns)} · total lu ${ko(tot(before))}\n` +
+      `APRÈS  ${after.calls} mutation  · lu ${ko(after.bytes)} · ${after.written} documents écrits · relances (session:get ×1) ${ko(after.reruns)} · total lu ${ko(tot(after))}\n` +
+      `gain   ${(((tot(before) - tot(after)) / tot(before)) * 100).toFixed(0)} % lu · ${before.written - after.written} écritures en moins`,
+  );
+  expect(tot(after)).toBeLessThan(tot(before));
+  expect(after.written).toBeLessThan(before.written);
+});
+
 test('myTrades : documents joueurs lus pour afficher les noms (3 échanges en attente, 2 autres joueurs)', async () => {
   const t = convexTest(schema, modules);
   const { a, b } = await seed(t);

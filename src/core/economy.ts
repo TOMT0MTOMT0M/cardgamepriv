@@ -25,6 +25,8 @@ import { msgRef, str } from './msgRefs';
  * l'ouverture + ≈ 162 de Forge, donc 250 > ce qu'il rend (pas de boucle « acheter → forger → racheter »).
  */
 export const PACK_PRICE = 250;
+/** (V3, packs événement) un booster d'événement acheté coûte 10 boosters (2 500 pièces) — src/core/events.ts */
+export const EVENT_PACK_PRICE = 10 * PACK_PRICE;
 
 /** (v2.1.39) la nouvelle économie démarre le 01/12/2026 à 0 h, heure de Paris (UTC+1 en hiver) */
 export const ECON_V2_AT = Date.UTC(2026, 10, 30, 23, 0, 0);

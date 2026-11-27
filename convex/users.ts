@@ -1,5 +1,6 @@
 import { fe } from '../src/core/errors';
 import { packCapOf } from '../src/core/abo';
+import { eventCapOf } from '../src/core/events';
 import { v, ConvexError } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
@@ -52,8 +53,11 @@ export function meView(user: Doc<'users'>, now: number) {
     canClaimDaily: false,
     // (audit 12/11, E1-10) réserve pleine : valeur stable (avant : `now`, donc un résultat différent à chaque ré-exécution)
     nextDailyClaimAt: regen.nextAt ?? packRegenAt,
-    /** pity 6★ (src/core/pity.ts) */
-    pityCount: user.pityCount ?? 0,
+    /** pity 6★ (src/core/pity.ts) — (V3, piste 9) celui d'avant un booster scellé d'avance pas encore ouvert (anti-spoil) */
+    pityCount: user.pityHold && user.pityHold.raw === (user.pityCount ?? 0) ? user.pityHold.shown : user.pityCount ?? 0,
+    /** (V3, packs événement) réserve du booster d'événement telle qu'enregistrée (le client la recalcule : eventRegen) */
+    ev: user.ev ? { id: user.ev.id as string, n: user.ev.n, at: user.ev.at, ahead: user.ev.ahead } : undefined,
+    evCap: eventCapOf(user, now),
     wishlist: user.wishlist ?? [],
     wishFams: user.wishFams ?? [],
     /** (refonte des échanges 11/11) cartes protégées : jamais proposées (convex/deals.ts) */

@@ -10,6 +10,8 @@
  */
 import { lang, t as tr } from './i18n';
 import { msgRef, str } from './msgRefs';
+import { subActive } from './abo';
+import { applyRegen, type RegenState } from './packRegen';
 import { ALL_THEMES, catalogEntry, catalogInstalled, inSubthemeScope, scopeLabel, type CatalogEntry } from './sets/themes';
 
 export interface EventContent {
@@ -82,6 +84,43 @@ export const eventLive = (e: Pick<PackEvent, 'startAt' | 'endAt'>, now = Date.no
 /** L'événement en cours (le premier s'il y en avait plusieurs) */
 export function liveEvent<T extends Pick<PackEvent, 'startAt' | 'endAt'>>(list: readonly T[] | undefined | null, now = Date.now()): T | null {
   return (list ?? []).filter((e) => eventLive(e, now)).sort((a, b) => a.startAt - b.startAt)[0] ?? null;
+}
+
+/**
+ * (V3, packs événement — décision de Tom et Hugo, 24/11) RÉSERVE PROPRE au booster d'un événement, à côté de la réserve
+ * normale : 1 booster offert par heure, 3 en réserve au plus (5 pour un abonné), achat à 10 × le prix d'un booster
+ * (`EVENT_PACK_PRICE`, src/core/economy.ts). Ouvrir un booster d'événement ne prend plus un booster normal.
+ * Décidé (« booster de lancement ») : la réserve d'un événement démarre à 1 booster à son début et se recharge depuis
+ * ce début (un joueur qui arrive 2 h après en trouve 3). Stockage paresseux comme la réserve normale : `{ id, n, at }`
+ * n'est écrit qu'à l'ouverture ou à l'achat ; un autre id (nouvel événement) repart de zéro.
+ */
+export const EVENT_REGEN_MS = 3_600_000;
+export const EVENT_CAP = 3;
+/** boosters d'événement de réserve en plus pour un abonné (texte `ab.p5`) */
+export const SUB_EXTRA_EVENT_PACKS = 2;
+/** booster de lancement : la réserve d'un événement démarre à 1 */
+export const EVENT_LAUNCH_PACKS = 1;
+
+/** réserve d'événement enregistrée sur le joueur (convex/schema.ts `users.ev`) ; `ahead` : boosters scellés d'avance */
+export interface EventStore {
+  id: string;
+  n: number;
+  at: number;
+  ahead?: number;
+}
+
+/** Réserve maximale d'événement (3, ou 5 pour un abonné). */
+export const eventCapOf = (u: { subUntil?: number } | null | undefined, now = Date.now()) => EVENT_CAP + (subActive(u, now) ? SUB_EXTRA_EVENT_PACKS : 0);
+
+/**
+ * Réserve d'événement à `now` (recharge comprise, arrêtée à la fin de l'événement). `stored` d'un autre événement (ou
+ * absent) : réserve neuve (booster de lancement, recharge depuis le début).
+ */
+export function eventRegen(stored: EventStore | null | undefined, e: Pick<PackEvent, 'id' | 'startAt' | 'endAt'>, now: number, cap: number): RegenState & { ahead: number } {
+  const s = stored && stored.id === e.id ? stored : { n: EVENT_LAUNCH_PACKS, at: e.startAt, ahead: 0 };
+  const t = Math.max(Math.min(now, e.endAt), s.at);
+  const r = applyRegen(s.n, s.at, t, 0, cap, EVENT_REGEN_MS);
+  return { ...r, nextAt: r.nextAt !== null && r.nextAt < e.endAt ? r.nextAt : null, ahead: s.ahead ?? 0 };
 }
 
 /** Signature du contenu (clé de cache du pool de tirage) */

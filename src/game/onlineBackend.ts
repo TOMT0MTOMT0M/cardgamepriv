@@ -133,6 +133,8 @@ export function createOnlineBackend(): GameBackend {
             packRegenAt: n.user.packRegenAt ?? Date.now(),
             packCap: n.user.packCap,
             boostUntil: n.user.boostUntil,
+            ...(n.user.ev ? { ev: n.user.ev } : {}),
+            ...(n.user.evCap ? { evCap: n.user.evCap } : {}),
             totalPacksOpened: n.user.totalPacksOpened,
             pityCount: n.user.pityCount ?? 0,
             streak: n.user.streak ?? undefined,
@@ -221,6 +223,9 @@ export function createOnlineBackend(): GameBackend {
     async revealPack(id) {
       await net.revealPack(id as Id<'packOpens'>);
       shootRevealed([id]);
+    },
+    async buyEventPack(eventId) {
+      await net.buyEventPack(eventId as Id<'packEvents'>);
     },
     async preparePacks(req, count) {
       const packs = await net.preparePacks(packArgs(req), count);

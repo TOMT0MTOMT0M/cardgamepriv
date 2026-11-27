@@ -95,6 +95,18 @@ export default defineSchema({
     bio: v.optional(v.string()),
     /** pity 6★ : boosters d'affilée sans Mythique (src/core/pity.ts) — absent = 0 */
     pityCount: v.optional(v.number()),
+    /**
+     * (V3, piste Convex 9) pity AFFICHÉ tant qu'un booster scellé d'avance n'est pas ouvert : `raw` = pityCount juste
+     * après ce scellage ; tant que pityCount vaut `raw`, le joueur voit `shown` (anti-spoil : une 6★ d'avance ne se devine pas)
+     */
+    pityHold: v.optional(v.object({ raw: v.number(), shown: v.number() })),
+    /** (V3, piste Convex 9) boosters de la réserve normale déjà scellés d'avance (réservés, débités à leur ouverture) */
+    packAhead: v.optional(v.number()),
+    /**
+     * (V3, packs événement) réserve propre du booster d'événement (src/core/events.ts, eventRegen) : événement, réserve
+     * stockée, départ de la recharge (1 / h), boosters scellés d'avance. Absent ou autre id : réserve neuve.
+     */
+    ev: v.optional(v.object({ id: v.id('packEvents'), n: v.number(), at: v.number(), ahead: v.optional(v.number()) })),
     /** « envies » : ids de cartes marquées (fiche booster, échanges) */
     wishlist: v.optional(v.array(v.string())),
     /** (v2.1) familles voulues : `s:<sous-thème>` ou `g:<groupe>` (src/core/wishFams.ts), 10 au plus */
@@ -264,6 +276,11 @@ export default defineSchema({
     /** (11/11, événements limités) booster du moment : l'événement et son nom au moment du tirage (packKind 'theme', sans themeId) */
     eventId: v.optional(v.id('packEvents')),
     eventName: v.optional(v.string()),
+    /**
+     * (V3, piste Convex 9) scellé d'avance par `openPack` (le booster suivant du même type) : RÉSERVÉ dans la réserve,
+     * débité à son ouverture ; jamais jeté (anti-reroll), rendu à la prochaine ouverture de ce type
+     */
+    ahead: v.optional(v.boolean()),
     createdAt: v.number(),
     revealedAt: v.optional(v.number()),
   })

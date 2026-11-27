@@ -55,6 +55,9 @@ export interface MeProfile {
   nextPackAt?: number | null;
   /** pity 6★ (src/core/pity.ts) */
   pityCount?: number;
+  /** (V3, packs événement) réserve du booster d'événement enregistrée, et sa réserve maximale (3, 5 pour un abonné) */
+  ev?: { id: string; n: number; at: number; ahead?: number };
+  evCap?: number;
   /** envies (ids de cartes) */
   wishlist?: string[];
   wishFams?: string[];
@@ -121,6 +124,12 @@ export interface PackRequestArgs {
   themeId?: string;
   /** (11/11) booster du moment */
   eventId?: Id<'packEvents'>;
+}
+
+/** (V3, piste Convex 9) sorte d'un booster (même clé que convex/packs.ts, sortKey) : un booster scellé d'avance par sorte */
+function sortOf(p: { packKind?: 'theme' | 'bebou'; themeId?: string; eventId?: string } | undefined): string {
+  if (p?.eventId) return `e:${p.eventId}`;
+  return (p?.packKind ?? 'bebou') === 'theme' ? `t:${p?.themeId ?? ''}` : 'b';
 }
 
 export interface NetState {
@@ -428,13 +437,9 @@ class GameNetClient {
       this.unsubscribers.push(u);
     }
 
-    // 2. Pre-rolled sealed booster (0ms tear/light-leak ready in RAM)
-    this.unsubscribers.push(
-      this.client.onUpdate(api.packs.getSealedPack, tokenArg, (pack) => {
-        this.state.sealedPack = pack ?? null;
-        this.emit();
-      }),
-    );
+    // 2. Pre-rolled sealed booster (0ms tear/light-leak ready in RAM) — (V3, piste Convex 9) lus UNE fois (plus
+    // d'abonnement : il se relançait deux fois par booster) ; ensuite, chaque mutation des boosters dit ce qui est scellé
+    if (hasToken) void this.loadSealed(tokenArg);
 
     // 2 bis. (ouverture 07/11) compte à rebours + remise à zéro (aussi sans être connecté) ; un serveur qui n'a pas
     // encore cette requête répond par une erreur : on reste sans compte à rebours
@@ -967,6 +972,8 @@ class GameNetClient {
     clearTimeout(this.invSaveT);
     void clearInv();
     this.state.sealedPack = null;
+    this.ahead.clear();
+    this.series.clear();
     this.setupSubscriptions();
     this.emit();
   }
@@ -1003,6 +1010,15 @@ class GameNetClient {
     });
     // un pack scellé non ouvert est rendu tel quel (anti-reroll côté serveur aussi)
     if (this.state.sealedPack) return shape(this.state.sealedPack);
+    // (V3, piste Convex 9) le booster de cette sorte scellé d'avance par l'ouverture précédente : aucun appel
+    const k = sortOf(req);
+    const ahead = this.ahead.get(k);
+    if (ahead) {
+      this.ahead.delete(k);
+      this.state.sealedPack = ahead;
+      this.emit();
+      return shape(ahead);
+    }
     if (!this.client || !this.sessionToken) {
       throw new Error('Non connecté');
     }
@@ -1019,6 +1035,11 @@ class GameNetClient {
   public async preparePacks(req: PackRequestArgs | undefined, count: number): Promise<Doc<'packOpens'>[]> {
     if (!this.client || !this.sessionToken) throw new Error('Non connecté');
     const packs = await this.client.mutation(api.packs.preparePacks, { sessionToken: this.sessionToken, ...(req ?? {}), count });
+    // (piste 9) le serveur range dans la série le booster d'avance de cette sorte : il n'est plus « d'avance »
+    for (const p of packs) {
+      this.series.add(p._id);
+      for (const [k, a] of this.ahead) if (a._id === p._id) this.ahead.delete(k);
+    }
     if (packs[0]) {
       this.state.sealedPack = packs[0];
       this.emit();
@@ -1038,17 +1059,56 @@ class GameNetClient {
   /**
    * Confirms the reveal at the end of the 3D pack opening animation,
    * crediting cards to the binder and broadcasting Rare+/Mythic pulls to friends.
+   * (V3, piste Convex 9) par `openPack` : le crédit scelle aussi d'avance le booster suivant de la même sorte (sauf
+   * pendant une série dont d'autres boosters attendent) ; serveur pas encore à jour : `revealPack`, comme avant.
    */
   public async revealPack(packId?: Id<'packOpens'>) {
     const targetId = packId ?? this.state.sealedPack?._id;
     if (!targetId || !this.client || !this.sessionToken) return null;
-    const revealed = await this.client.mutation(api.packs.revealPack, {
-      sessionToken: this.sessionToken,
-      packId: targetId,
-    });
+    this.series.delete(targetId);
+    let revealed: Doc<'packOpens'>;
+    if (this.openPackOk) {
+      try {
+        const r = await this.client.mutation(api.packs.openPack, { sessionToken: this.sessionToken, packId: targetId, next: this.series.size === 0 });
+        revealed = r.pack;
+        if (r.next && r.next.status === 'sealed') this.ahead.set(sortOf(r.next), r.next);
+      } catch (e) {
+        if (!/Could not find public function/i.test(String((e as Error)?.message ?? e))) throw e;
+        this.openPackOk = false;
+        revealed = await this.client.mutation(api.packs.revealPack, { sessionToken: this.sessionToken, packId: targetId });
+      }
+    } else revealed = await this.client.mutation(api.packs.revealPack, { sessionToken: this.sessionToken, packId: targetId });
     this.forgetSealed([targetId]);
     this.emit();
     return revealed;
+  }
+
+  /** (V3, packs événement) acheter un booster d'événement : il rejoint la réserve de l'événement */
+  public async buyEventPack(eventId: Id<'packEvents'>): Promise<number> {
+    if (!this.client || !this.sessionToken) throw new Error('Non connecté');
+    return (await this.client.mutation(api.packs.buyEventPack, { sessionToken: this.sessionToken, eventId })).packs;
+  }
+
+  /** (V3, piste 9) boosters scellés au démarrage : abandonnés (rouverts d'abord) et scellés d'avance (un par sorte) */
+  private async loadSealed(tokenArg: { sessionToken?: string }) {
+    if (!this.client) return;
+    let rows: Doc<'packOpens'>[];
+    try {
+      rows = await this.client.query(api.packs.sealedMine, tokenArg);
+    } catch {
+      // serveur pas encore à jour : l'ancienne requête, une fois
+      rows = await this.client.query(api.packs.getSealedPack, tokenArg).then((p) => (p ? [p] : [])).catch(() => []);
+    }
+    if (this.sessionToken !== tokenArg.sessionToken) return;
+    // (reconnexion pendant une ouverture : le booster en cours reste le booster en cours)
+    const inUse = this.state.sealedPack && rows.some((p) => p._id === this.state.sealedPack!._id) ? this.state.sealedPack : null;
+    this.ahead.clear();
+    for (const p of rows) if (p.ahead && p._id !== inUse?._id && !this.ahead.has(sortOf(p))) this.ahead.set(sortOf(p), p);
+    const next = inUse ?? rows.find((p) => !p.ahead) ?? null;
+    if (this.state.sealedPack?._id !== next?._id) {
+      this.state.sealedPack = next;
+      this.emit();
+    }
   }
 
   /**
@@ -1057,7 +1117,13 @@ class GameNetClient {
    */
   private forgetSealed(ids: string[]) {
     if (this.state.sealedPack && ids.includes(this.state.sealedPack._id)) this.state.sealedPack = null;
+    for (const id of ids) this.series.delete(id);
+    for (const [k, a] of this.ahead) if (ids.includes(a._id)) this.ahead.delete(k);
   }
+  /** (V3, piste Convex 9) boosters scellés d'avance, un par sorte (`sortOf`) ; boosters d'une série pas encore crédités */
+  private ahead = new Map<string, Doc<'packOpens'>>();
+  private series = new Set<string>();
+  private openPackOk = true;
 
   // ─────────────────────────────── échanges
   private requireToken(): string {

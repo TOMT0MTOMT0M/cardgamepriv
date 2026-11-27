@@ -299,6 +299,8 @@ export const fr = {
 
   // ───── src/game/views/shop.ts (à la main) ─────
   'shop.evLeft': 'encore',
+  'shop.evRes': 'réserve',
+  'shop.evNext': '+1 dans {time}',
 
   // ───── src/game/ui.ts (à la main) ─────
   'plural.booster': { one: '{n} booster', other: '{n} boosters' },
@@ -478,9 +480,12 @@ export const fr = {
   'ps.openMy': 'OUVRIR MON {name}',
   'ps.drawn': 'Booster déjà tiré, pas encore ouvert',
   'ps.next': 'Le prochain arrive dans {time} · 1 toutes les {min} min',
+  'ps.nextEv': 'Le prochain arrive dans {time} · 1 par heure',
+  'ps.evDone': 'Plus de booster avant la fin de l’événement',
   'ps.openN': 'OUVRIR ×{n}',
   'ps.inReserve': { one: '{n} booster en réserve{max}', other: '{n} boosters en réserve{max}' },
   'ps.noLimit': 'sans limite · solde {coins}',
+  'ps.evBuy': 'réserve de l’événement · solde {coins}',
   'ps.pitySure': 'Ton prochain booster contient un 6★ sûr&nbsp;!',
   'ps.achHow': 'Succès « {label} » : {how}',
   'ps.anim': 'Animation d’ouverture',

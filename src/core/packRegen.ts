@@ -33,14 +33,17 @@ const realAt = (from: number, eff: number, boostUntil: number) => {
   return eff <= 2 * boosted ? from + eff / 2 : from + boosted + (eff - 2 * boosted);
 };
 
-/** `cap` : réserve maximale du joueur (15 ; 20 pour un abonné — src/core/abo.ts, packCapOf). */
-export function applyRegen(balance: number, regenAt: number, now: number, boostUntil = 0, cap = PACK_CAP): RegenState {
+/**
+ * `cap` : réserve maximale du joueur (15 ; 20 pour un abonné — src/core/abo.ts, packCapOf). `period` : (V3, packs
+ * événement) durée d'une recharge — 5 min pour la réserve normale, 1 h pour celle d'un événement (src/core/events.ts).
+ */
+export function applyRegen(balance: number, regenAt: number, now: number, boostUntil = 0, cap = PACK_CAP, period = PACK_REGEN_MS): RegenState {
   if (balance >= cap) return { balance, regenAt: now, nextAt: null };
-  const gained = Math.max(0, Math.floor(effSpan(regenAt, now, boostUntil) / PACK_REGEN_MS));
+  const gained = Math.max(0, Math.floor(effSpan(regenAt, now, boostUntil) / period));
   const b = Math.min(cap, balance + gained);
   if (b >= cap) return { balance: b, regenAt: now, nextAt: null };
-  const at = realAt(regenAt, gained * PACK_REGEN_MS, boostUntil);
-  return { balance: b, regenAt: at, nextAt: realAt(at, PACK_REGEN_MS, boostUntil) };
+  const at = realAt(regenAt, gained * period, boostUntil);
+  return { balance: b, regenAt: at, nextAt: realAt(at, period, boostUntil) };
 }
 
 /** Instant réel où la réserve sera PLEINE (null : déjà pleine) — notifications push « réserve pleine ». */
