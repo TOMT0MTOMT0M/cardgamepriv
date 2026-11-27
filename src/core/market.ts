@@ -23,6 +23,17 @@ export const WANTED_CARDS_MAX = 200;
 export const marketSuggested = (r: RarityId | string) => CARD_VALUE[r as RarityId] ?? 0;
 /** (v2.1.41) prix conseillé à la mise en vente : 1★ 8 · 2★ 23 · 3★ 60 · 4★ 150 · 5★ 450 · 6★ 1 500 */
 export const marketAdvised = (r: RarityId | string) => Math.round(marketSuggested(r) * MARKET_ADVISED_MULT);
+/**
+ * (V3, marché « façon Kyara ») écart d'un prix au PRIX DE RÉFÉRENCE = le prix conseillé (pas de prix médian côté
+ * serveur sans lecture en plus). `pct` arrondi ; `cls` = couleur de l'étiquette : `good` (au moins 5 % sous la
+ * référence), `fair` (autour), `up` (+20 à +60 %), `high` (au-delà de +60 %). `null` pour une carte sans valeur.
+ */
+export function marketGap(r: RarityId | string, price: number): { pct: number; cls: 'good' | 'fair' | 'up' | 'high' } | null {
+  const a = marketAdvised(r);
+  if (!a) return null;
+  const pct = Math.round(((price - a) / a) * 100);
+  return { pct, cls: pct <= -5 ? 'good' : pct < 20 ? 'fair' : pct <= 60 ? 'up' : 'high' };
+}
 /** prix maximal */
 export const marketMax = (r: RarityId | string) => Math.max(1, marketSuggested(r) * MARKET_PRICE_MULT);
 

@@ -13,12 +13,13 @@ import { ABUSE, cardsValue, fmtCoins } from '../../core/economy';
 import { confirmTap } from './safety';
 import { createBoard } from './board';
 import { createMarket } from './market';
-import { cardQuery, cardWhere, searchCatalog } from '../../core/cardSearch';
+import { cardQuery, searchCatalog } from '../../core/cardSearch';
 import { createForYou, pickCardSheet } from './forYou';
 import { invalidatePanel, showCardPanel } from './cardPanel';
 import { proposable } from '../../core/deals';
 import { DUR, EASING } from '../../core/motion';
 import { createTradeBalance, type BalSide } from './tradeBalance';
+import { wishSales } from '../wishSales';
 import '../echanges.css';
 
 /**
@@ -112,26 +113,20 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     <header class="ex-head">
       <span class="kicker">${tr('tr.title')}</span>
       <div class="ex-tabs" role="tablist" aria-label="${tr('tr.title')}">
-        <button role="tab" data-z="pour" class="on" aria-selected="true">${tr('tr.forYou')}<b class="badge ex-b-pour" hidden></b></button>
-        <button role="tab" data-z="cherche" aria-selected="false">${tr('tr.search')}</button>
-        <button role="tab" data-z="cours" aria-selected="false">${tr('tr.ongoing')}<b class="badge ex-b-cours" hidden></b></button>
-        <button role="tab" data-z="hist" aria-selected="false">${tr('tr.histTab')}</button>
+        <button role="tab" data-z="acheter" class="on" aria-selected="true">${tr('tr.buyTab')}<b class="badge ex-b-acheter" hidden></b></button>
+        <button role="tab" data-z="vendre" aria-selected="false">${tr('tr.sellTab')}</button>
+        <button role="tab" data-z="echanges" aria-selected="false">${tr('tr.tradesTab')}<b class="badge ex-b-echanges" hidden></b></button>
+        <button role="tab" data-z="activite" aria-selected="false">${tr('tr.activityTab')}</button>
       </div>
     </header>
-    <div class="ex-zone ex-pour" data-z="pour"><div class="ex-vendre"></div></div>
-    <div class="ex-zone ex-cherche" data-z="cherche" hidden>
-      <div class="ex-search">
-        <input class="search ex-q" type="search" placeholder="${tr('tr.searchPh')}" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="${tr('tr.searchA')}">
-        <div class="starf ex-stars" role="group" aria-label="${tr('tr.stars')}">${STARS.map((r) => `<button class="chip" data-r="${r}" style="--rc:${rarity(r).hex}" title="${rarity(r).label}">${RANK[r] + 1}★</button>`).join('')}</div>
-      </div>
-      <div class="ex-results" aria-live="polite"></div>
-      <h3 class="ex-h ex-h-mk">${tr('tr.market')} <small>${tr('tr.marketD')}</small></h3>
+    <div class="ex-zone ex-acheter" data-z="acheter"></div>
+    <div class="ex-zone ex-vendre" data-z="vendre" hidden></div>
+    <div class="ex-zone ex-echanges" data-z="echanges" hidden>
+      <div class="ex-cours"><div class="pending"></div></div>
+      <div class="ex-pour"></div>
+      <div class="ex-compose-cta"><button class="btn-ghost ex-compose">${tr('tr.compose')}</button></div>
     </div>
-    <div class="ex-zone ex-cours" data-z="cours" hidden>
-      <div class="pending"></div>
-      <div class="ex-compose-cta"><button class="btn-ghost ex-compose">${tr('tr.compose')}</button><small>${tr('tr.composeD')}</small></div>
-    </div>
-    <div class="ex-zone ex-hist" data-z="hist" hidden>
+    <div class="ex-zone ex-hist" data-z="activite" hidden>
       <div class="starf hx-filters" role="group" aria-label="${tr('tr.h.filterA')}"></div>
       <ol class="history" aria-live="polite"></ol>
     </div>
@@ -209,15 +204,19 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   const matchList = q('.match-list');
   const viewerUi = q('.viewer-ui');
 
-  // ── (refonte 11/11) LA PAGE : trois zones (Pour toi · Chercher · En cours) + le composeur manuel
-  const forYou = createForYou(backend, { chime: () => shell.sfx.chime(3, 0.08), search: () => setZone('cherche') });
+  // ── (V3, marché « façon Kyara ») LA PAGE : Acheter · Vendre · Échanges · Mon activité, + le composeur manuel
+  // ÉCHANGES : en cours (reçus / envoyés), les échanges tout faits (« Pour toi »), puis le tableau d'offres
+  const forYou = createForYou(backend, { chime: () => shell.sfx.chime(3, 0.08), search: () => setZone('acheter') });
   q('.ex-pour').append(forYou.el);
-  // marché fondu dans « Chercher » (views/market.ts, même recherche) — abonnement seulement quand la zone est à l'écran
-  const market = createMarket(backend, { chime: () => shell.sfx.chime(3, 0.08) });
-  q('.ex-cherche').append(market.el);
-  // (13/11, retours Hugo) « Vendre · Échanger » : une carte → en vente (prix fixe) OU à l'échange (tableau d'offres,
-  // de nouveau ouvert), mes ventes, puis le tableau (toutes les annonces, les miennes, mes offres)
   const board = createBoard(backend, { fairness, gaugeHtml, ago, chime: () => shell.sfx.chime(3, 0.08) });
+  q('.ex-pour').append(board.el);
+  // ACHETER : le marché (views/market.ts) ; une recherche y montre aussi les cartes du catalogue (« chez les joueurs »)
+  const findRes = h('div', 'ex-results');
+  findRes.setAttribute('aria-live', 'polite');
+  const market = createMarket(backend, { chime: () => shell.sfx.chime(3, 0.08), onQuery: (v) => renderFind(v) });
+  market.el.querySelector('.mk-aside')!.append(findRes);
+  q('.ex-acheter').append(market.el);
+  // VENDRE : ma collection en grille ; une carte → prix fixe, enchère ou échange (tableau d'offres, dans Échanges)
   const sellMk = createMarket(backend, {
     chime: () => shell.sfx.chime(3, 0.08),
     mode: 'sell',
@@ -228,15 +227,13 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
         /* rien */
       }
       board.leave();
-      board.enter();
+      if (zone === 'echanges') board.enter();
     },
   });
-  // (v2.0.1) dans « Pour toi » : vendre / échanger en tête, les échanges tout faits, puis mes annonces et leurs offres
   q('.ex-vendre').append(sellMk.el);
-  q('.ex-pour').append(board.el);
 
-  type Zone = 'pour' | 'vendre' | 'cherche' | 'cours' | 'hist' | 'compose';
-  let zone: Zone = 'pour';
+  type Zone = 'acheter' | 'vendre' | 'echanges' | 'activite' | 'compose';
+  let zone: Zone = 'acheter';
   const tabBtns = [...el.querySelectorAll<HTMLButtonElement>('.ex-tabs button')];
   function setZone(z: Zone) {
     if (zone === 'compose' && z !== 'compose' && friend) {
@@ -251,19 +248,18 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       b.setAttribute('aria-selected', String(on));
     });
     el.querySelectorAll<HTMLElement>('.ex-zone').forEach((x) => (x.hidden = x.dataset.z !== z));
-    if (z === 'cherche') market.enter();
+    // abonnements seulement pour l'onglet à l'écran
+    if (z === 'acheter') market.enter();
     else market.leave();
-    // (v2.0.1, retours Hugo) vendre / échanger une carte se fait directement dans « Pour toi » (plus d'onglet à part)
-    if (z === 'pour') {
-      sellMk.enter();
+    if (z === 'vendre') sellMk.enter();
+    else sellMk.leave();
+    if (z === 'echanges') {
       board.enter();
-    } else {
-      sellMk.leave();
-      board.leave();
-    }
-    if (z === 'pour') forYou.enter();
-    if (z === 'cours') renderPending();
-    if (z === 'hist') {
+      forYou.enter();
+      renderPending();
+    } else board.leave();
+    syncTabBadges();
+    if (z === 'activite') {
       renderHistory();
       void loadHistory();
     }
@@ -277,20 +273,22 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
   }
   tabBtns.forEach((x) => x.addEventListener('click', () => setZone(x.dataset.z as Zone)));
   q('.ex-compose').addEventListener('click', () => setZone('compose'));
-  q('.ex-back').addEventListener('click', () => setZone('cours'));
-  const syncTabBadges = () => {
-    const ni = backend.state.trades.incoming.length;
-    const bc = q('.ex-b-cours');
-    bc.hidden = !ni;
-    bc.textContent = String(ni);
-    // offres reçues sur mes annonces, contre-offres : sur l'onglet du tableau
-    const nb = board.attention();
-    const np = forYou.count() + nb;
-    const bp = q('.ex-b-pour');
-    bp.hidden = !np;
-    bp.textContent = String(np);
-  };
+  q('.ex-back').addEventListener('click', () => setZone('echanges'));
+  function syncTabBadges() {
+    // Échanges : reçus + échanges tout faits + offres reçues sur mes annonces / contre-offres
+    const ne = backend.state.trades.incoming.length + forYou.count() + board.attention();
+    const be = q('.ex-b-echanges');
+    be.hidden = !ne;
+    be.textContent = String(ne);
+    // (C bis) Acheter : cartes voulues mises en vente depuis la dernière visite
+    if (zone === 'acheter' && el.isConnected && wishSales.unseen()) wishSales.visit();
+    const na = wishSales.unseen();
+    const ba = q('.ex-b-acheter');
+    ba.hidden = !na;
+    ba.textContent = String(na);
+  }
   backend.onChange(() => el.isConnected && syncTabBadges());
+  wishSales.onChange(() => el.isConnected && syncTabBadges());
   const vInfo = q('.v-info');
   const vActions = q('.v-actions');
 
@@ -511,8 +509,8 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     if (confirmingTrade && !incoming.some((t) => t.id === confirmingTrade)) confirmingTrade = null;
     // l'échange que je viens d'accepter reste à sa place le temps du sceau
     for (const [id, sl] of sealing) if (!incoming.some((t) => t.id === id)) incoming.splice(Math.min(sl.at, incoming.length), 0, sl.t);
+    // (V3, moins de texte) rien en attente : rien d'écrit, « Pour toi » suit directement
     pendingEl.innerHTML = '';
-    if (!incoming.length && !outgoing.length) pendingEl.innerHTML = `<div class="muted ex-none">${tr('tr.noPending')}</div>`;
     const owned = mine();
     const row = (t: TradeView, dir: 'in' | 'out') => {
       const r = h('div', `trade ${dir}${countering?.id === t.id ? ' countering' : ''}`);
@@ -762,49 +760,24 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
     }
   }
 
-  // ── CHERCHER (refonte 11/11) : une recherche dans TOUT le catalogue (toucher = « chez les joueurs », views/cardPanel.ts)
-  // et le marché dessous, filtré pareil. Sans texte : rien que le marché (avec l'étoile choisie).
+  // ── ACHETER : une recherche montre aussi les cartes du CATALOGUE qui correspondent (en vente ou non), en petite
+  // rangée de cartes (toucher = « chez les joueurs » : qui l'a, la vend, la veut — views/cardPanel.ts)
   let pendingGet: string | null = null;
-  const findIn = q<HTMLInputElement>('.ex-q');
-  const findRes = q('.ex-results');
-  let findStar: RarityId | null = null;
-  const findStars = [...el.querySelectorAll<HTMLButtonElement>('.ex-stars .chip')];
-  function renderFind() {
-    const v = findIn.value.trim();
-    market.setFilter(v, findStar);
-    q('.ex-h-mk').hidden = false;
-    if (!v) return void (findRes.innerHTML = '');
+  function renderFind(v: string) {
+    if (!v) return void findRes.replaceChildren();
     const have = new Map(backend.state.collection.map((c) => [c.cardId, c.count]));
-    const res = searchCatalog(v, { limit: 40, includeSecret: (id) => have.has(id) })
-      .filter((e) => !findStar || e.rarity === findStar)
-      .slice(0, 12);
+    const res = searchCatalog(v, { limit: 24, includeSecret: (id) => have.has(id) });
     if (!res.length) return void (findRes.innerHTML = `<div class="muted ex-none">${tr('tr.noCardMatch', { q: esc(v) })}</div>`);
-    findRes.replaceChildren(
-      h('h3', 'ex-h', `${tr('tr.cards')} <small>${tr('tr.cardsD')}</small>`),
+    const row = h('div', 'ex-cat');
+    row.append(
       ...res.map((e) => {
-        const r = rarity(e.rarity);
-        const n = have.get(e.id) ?? 0;
-        const wish = backend.state.wishlist.includes(e.id);
-        const row = h('button', 'tf-row ex-row');
-        row.style.setProperty('--rc', r.hex);
-        row.innerHTML = `${e.rarity !== 'secret' ? `<img alt="" loading="lazy" src="${thumbUrl(e)}">` : '<span class="tf-noimg"></span>'}<span class="tf-id"><b>${esc(e.name)}</b><small>${esc(cardWhere(e))} · <i>${r.rank + 1}★</i> · <em>${n ? tr('tr.youHave', { n }) : 'manquante'}</em>${wish ? ' · <em class="ex-wish">♥ voulue</em>' : ''}</small></span><span class="ex-go" aria-hidden="true">›</span>`;
-        row.addEventListener('click', () => showCardPanel(backend, e.id));
-        return row;
+        const t = cardTile(e.id, e.rarity, { owned: have.has(e.id), mini: true });
+        t.addEventListener('click', () => showCardPanel(backend, e.id));
+        return t;
       }),
     );
+    findRes.replaceChildren(h('h3', 'ex-h', tr('tr.cards')), row);
   }
-  let findT = 0;
-  findIn.addEventListener('input', () => {
-    clearTimeout(findT);
-    findT = window.setTimeout(renderFind, 140);
-  });
-  findStars.forEach((b) =>
-    b.addEventListener('click', () => {
-      findStar = findStar === b.dataset.r ? null : (b.dataset.r as RarityId);
-      findStars.forEach((x) => x.classList.toggle('on', x.dataset.r === findStar));
-      renderFind();
-    }),
-  );
 
   // ── composer
   async function pick(f: Friend, keep = false) {
@@ -1387,17 +1360,17 @@ export function createTradesView(backend: GameBackend, shell: Shell, getViewer: 
       } catch {
         /* rien */
       }
+      // (V3) anciens liens gardés : chercher → Acheter, pour / tableau / cours → Échanges, historique → Mon activité
+      const SUB: Record<string, Zone> = { acheter: 'acheter', chercher: 'acheter', vendre: 'vendre', echanges: 'echanges', pour: 'echanges', tableau: 'echanges', cours: 'echanges', activite: 'activite', historique: 'activite' };
       const z: Zone = toCompose
         ? 'compose'
-        : sub === 'tableau' || sub === 'vendre'
-          ? 'pour'
-          : sub === 'pour' || sub === 'chercher' || sub === 'cours' || sub === 'historique'
-            ? (sub === 'chercher' ? 'cherche' : sub === 'historique' ? 'hist' : sub)
-            : backend.state.trades.incoming.length > 0
-              ? 'cours'
-              : last === 'cherche' || last === 'cours' || last === 'hist'
-                ? last
-                : 'pour';
+        : sub && SUB[sub]
+          ? SUB[sub]
+          : backend.state.trades.incoming.length > 0
+            ? 'echanges'
+            : last === 'acheter' || last === 'vendre' || last === 'echanges' || last === 'activite'
+              ? last
+              : 'acheter';
       setZone(z);
       if (z !== 'compose') return;
       const wanted = want ? backend.state.friends.find((f) => f.id === want) : undefined;

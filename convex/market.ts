@@ -90,6 +90,9 @@ export const sell = mutation({
     if (mine.length >= MARKET_MAX_OPEN) throw new ConvexError(fe('market.2', { p0: MARKET_MAX_OPEN }));
     const [taken] = await takeCards(ctx, me._id, [{ cardId, rarity, count: 1 }]);
     await ctx.db.insert('market', { sellerId: me._id, cardId, rarity, mintNumber: taken.mintNumber, price, status: 'open', createdAt: Date.now() });
+    // (V3, C bis) les joueurs qui veulent cette carte sont prévenus (1 alerte par vendeur et par heure au plus)
+    const notified = await alertWishers(ctx, me, [{ cardId, rarity, price }]);
+    return { notified };
   },
 });
 
@@ -166,19 +169,61 @@ export const quickSell = mutation({
     const now = Date.now();
     for (const t of taken)
       for (let i = 0; i < t.count; i++) await ctx.db.insert('market', { sellerId: me._id, cardId: t.cardId, rarity: t.rarity, mintNumber: t.mintNumber, price: marketAdvised(t.rarity), status: 'open', createdAt: now });
-    // les intéressés, regroupés : joueur → ses cartes (dans l'ordre du lot)
-    const per = new Map<Id<'users'>, WantCard[]>();
-    for (const [cardId, ids] of await wantersOf(ctx, me._id, items))
-      for (const id of ids) {
-        const it = items.find((x) => x.cardId === cardId)!;
-        per.set(id, [...(per.get(id) ?? []), it]);
-      }
-    for (const [id, l] of per) {
-      const c = l[0];
-      const body = l.length === 1 ? fm('n.wishSaleOne', { card: nameOf(c.cardId), cardId: c.cardId, coins: marketAdvised(c.rarity) }) : fm('n.wishSaleMany', { card: nameOf(c.cardId), cardId: c.cardId, coins: marketAdvised(c.rarity), n: l.length - 1 });
-      await notify(ctx, id, { kind: 'trade', title: fm('n.wishSale', { name: me.displayName, n: l.length }), body, url: '#/echanges/chercher', tag: `wish-sale-${me._id}` });
+    const notified = await alertWishers(ctx, me, items.map((it) => ({ cardId: it.cardId, rarity: it.rarity, price: marketAdvised(it.rarity) })));
+    return { listed: n, notified };
+  },
+});
+
+// ─────────────────────────────── (V3, C bis) ALERTE ACHETEUR
+/** plafond anti-spam : au plus une alerte par vendeur et par heure pour un même joueur */
+export const WISH_ALERT_GAP = 3600_000;
+type SaleCard = WantCard & { price: number };
+
+/**
+ * Prévient les joueurs qui VEULENT une des cartes qu'on vient de mettre en vente (Forge → vente, vente à la main, et
+ * demain les enchères) : UNE notification par joueur pour tout le lot (même `tag` par vendeur : la suivante remplace la
+ * précédente), et pas plus d'une par vendeur et par heure (`wishAlerts`, une ligne par acheteur et vendeur, réécrite).
+ * Lectures : `wantersOf` (1 à 3 lectures d'index d'envies par carte, puis 1 présence + 1 inventaire par intéressé),
+ * puis par joueur prévenu 1 ligne `wishAlerts` (+ le joueur et ses abonnements dans `notify`). Rend le nombre de prévenus.
+ */
+export async function alertWishers(ctx: MutationCtx, me: { _id: Id<'users'>; displayName: string }, cards: readonly SaleCard[], opts: { auction?: boolean } = {}): Promise<number> {
+  // les intéressés, regroupés : joueur → ses cartes (dans l'ordre du lot)
+  const per = new Map<Id<'users'>, SaleCard[]>();
+  for (const [cardId, ids] of await wantersOf(ctx, me._id, cards))
+    for (const id of ids) {
+      const it = cards.find((x) => x.cardId === cardId)!;
+      per.set(id, [...(per.get(id) ?? []), it]);
     }
-    return { listed: n, notified: per.size };
+  const now = Date.now();
+  let n = 0;
+  for (const [id, l] of per) {
+    const row = await ctx.db.query('wishAlerts').withIndex('by_user_seller', (q) => q.eq('userId', id).eq('sellerId', me._id)).first();
+    if (row && now - row.at < WISH_ALERT_GAP) continue;
+    const c = l[0];
+    if (row) await ctx.db.patch(row._id, { at: now, cardId: c.cardId });
+    else await ctx.db.insert('wishAlerts', { userId: id, sellerId: me._id, at: now, cardId: c.cardId });
+    // (enchères : `price` = la mise à prix ; « le premier qui achète l'a » ne vaut pas pour elles)
+    const one = opts.auction ? 'n.wishAuctionOne' : 'n.wishSaleOne';
+    const many = opts.auction ? 'n.wishAuctionMany' : 'n.wishSaleMany';
+    const body = l.length === 1 ? fm(one, { card: nameOf(c.cardId), cardId: c.cardId, coins: c.price }) : fm(many, { card: nameOf(c.cardId), cardId: c.cardId, coins: c.price, n: l.length - 1 });
+    await notify(ctx, id, { kind: 'trade', title: fm('n.wishSale', { name: me.displayName, n: l.length }), body, url: '#/echanges/chercher', tag: `wish-sale-${me._id}` });
+    n++;
+  }
+  return n;
+}
+
+/**
+ * Pastille du Marché : mes alertes « une carte que tu veux est en vente » (une ligne par vendeur, la plus récente).
+ * Abonnée en continu, mais ne lit que MES lignes (≤ une par vendeur) et ne repart que quand on m'en envoie une : ni le
+ * document joueur, ni `Date.now()` (le jeu compare `at` à sa dernière visite du Marché).
+ */
+export const alerts = query({
+  args: { sessionToken: v.optional(v.string()) },
+  handler: async (ctx, { sessionToken }) => {
+    const meId = await getUserIdByToken(ctx, sessionToken);
+    if (!meId) return [];
+    const rows = await ctx.db.query('wishAlerts').withIndex('by_user_seller', (q) => q.eq('userId', meId)).take(100);
+    return rows.map((r) => ({ at: r.at, cardId: r.cardId, sellerId: r.sellerId as string }));
   },
 });
 

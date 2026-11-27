@@ -383,8 +383,7 @@ body[data-route='amis'], body[data-route='profil'] { --accent: #e8927c; }
 .mk-step { min-width: 44px; min-height: 44px; padding: 0; font-size: 18px; }
 .mk-pbtns { display: flex; flex-wrap: wrap; gap: 10px; }
 .mk-note { margin: 0; font-size: 12px; }
-/* (13/11, retours Hugo) deux usages : « Chercher » (acheter) et « Vendre · Échanger » (mettre une carte, mes ventes) */
-.mk-sell > :is(.mk-tools, .mk-mytools, .mk-g-open, .mk-empty) { display: none !important; }
+/* (V3) marché « façon Kyara » (onglets Acheter / Vendre) : règles dans src/game/echanges.css, bloc « MARCHÉ façon Kyara » */
 /* (V3) « je l'ai / ♥ envie » + filtres « Mes manquantes / Mes envies » : filets seulement, aucune couleur */
 /* (v2.1.34, report) récap, réserve vide : pistes pour regagner un booster ; « −N » des pochettes presque finies */
 .sum-ways { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 14px; margin-top: 10px; font: 500 12px var(--mono); letter-spacing: 0.04em; color: var(--ink-3); }

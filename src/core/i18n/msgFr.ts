@@ -139,6 +139,8 @@ export const MSG_FR = {
   'n.wishSale': { one: '{name} vend une carte que tu veux', other: '{name} vend {n} cartes que tu veux' },
   'n.wishSaleOne': '{card} ({coins} pièces). Au marché : le premier qui achète l’a.',
   'n.wishSaleMany': { one: '{card} ({coins} pièces) et 1 autre. Au marché : le premier qui achète l’a.', other: '{card} ({coins} pièces) et {n} autres. Au marché : le premier qui achète l’a.' },
+  'n.wishAuctionOne': '{card} aux enchères dès {coins} pièces. Clôture à 21 h.',
+  'n.wishAuctionMany': { one: '{card} aux enchères dès {coins} pièces, et 1 autre. Clôture à 21 h.', other: '{card} aux enchères dès {coins} pièces, et {n} autres. Clôture à 21 h.' },
   'n.friendAccepted': '{name} a accepté ta demande d’ami',
   'n.friendAcceptedBody': 'Vous pouvez échanger des cartes.',
   'n.friendAsk': '{name} te demande en ami',

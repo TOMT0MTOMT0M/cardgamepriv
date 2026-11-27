@@ -121,6 +121,8 @@ export const enMsgs: Record<keyof typeof MSG_FR, MsgTpl> = {
   'n.wishSale': { one: '{name} is selling a card you want', other: '{name} is selling {n} cards you want' },
   'n.wishSaleOne': '{card} ({coins} coins). On the market: first to buy gets it.',
   'n.wishSaleMany': { one: '{card} ({coins} coins) and 1 more. On the market: first to buy gets it.', other: '{card} ({coins} coins) and {n} more. On the market: first to buy gets it.' },
+  'n.wishAuctionOne': '{card} up for auction from {coins} coins. Closes at 9 pm.',
+  'n.wishAuctionMany': { one: '{card} up for auction from {coins} coins, and 1 more. Closes at 9 pm.', other: '{card} up for auction from {coins} coins, and {n} more. Closes at 9 pm.' },
   'n.friendAccepted': '{name} accepted your friend request',
   'n.friendAcceptedBody': 'You can trade cards now.',
   'n.friendAsk': '{name} sent you a friend request',

@@ -2,7 +2,7 @@
 import { addFr } from '../../i18n';
 
 export const fr = {
-  'fy.intro': 'Tes envies chez ceux qui en ont un doublon, contre un de tes doublons de même étoile qui leur manque. Un toucher pour demander.',
+  'fy.intro': 'Tes envies contre tes doublons, même étoile. Un toucher pour demander.',
   'fy.refreshA': 'Chercher de nouveau',
   'fy.refresh': 'Actualiser',
   'fy.theyWant': 'Ils cherchent tes doublons',
@@ -18,8 +18,8 @@ export const fr = {
   'fy.whatGive': 'Ce que tu donnes',
   'fy.oneOfYours': 'Un de tes doublons {stars} qui manque à {name}',
   'fy.noOther': 'Aucune autre carte.',
-  'fy.none': 'Aucun échange prêt pour l’instant : personne n’a de doublon libre de tes envies, ou tu n’as pas de doublon de même étoile à donner en échange.',
-  'fy.howTo': 'Marque les cartes que tu veux (♥ Je la veux, dans la Collection ou sous une carte cherchée) : on trouve pour toi qui en a un doublon, et contre quoi.',
+  'fy.none': 'Aucun échange prêt pour l’instant.',
+  'fy.howTo': 'Marque des cartes « ♥ Je la veux » : on trouve qui en a un doublon.',
   'fy.search': 'Chercher une carte',
   'fy.myColl': 'Ma collection',
   'fy.seeks': '{name} la cherche · {stars}',

@@ -138,6 +138,12 @@ body:has(.f-drawer-open) .chat { display: none; }
 .cm-reply b { font-weight: 500; color: var(--ink-2); }
 .cm-card { width: 104px; margin-top: 2px; }
 .cm-card .tile { width: 100%; border-radius: 5px; }
+/* (V3, marché « façon Kyara ») la carte d'un autre joueur : rappel perso + « Proposer un échange » à côté */
+.cm-card.with-deal { display: grid; grid-template-columns: 104px auto; align-items: end; gap: 10px; width: auto; }
+.cm-deal { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.cm-own { font: 500 11px var(--mono); letter-spacing: 0.04em; color: #fff; }
+.cm-own.has { color: var(--ink-3); }
+.cm-ask { min-height: 36px; padding: 0 12px; font-size: 11px; }
 /* le mien : à droite, dans un cadre fin */
 .cm.mine { grid-template-columns: 30px minmax(0, 1fr); }
 .cm.mine .cm-main { align-items: flex-end; }

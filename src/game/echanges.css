@@ -67,7 +67,9 @@
 .ex-none { padding: 14px 0; font-size: 13px; }
 .ex-zone { padding-top: 16px; }
 @media all {
-  .ex-zone:not([hidden]) { animation: ex-in var(--dur-standard) var(--ease-entree) both; }
+  /* (V3) `backwards`, pas `both` : une fois entrée, la zone ne garde pas de `transform` (même neutre), sinon elle devient
+     le cadre des feuilles `position: fixed` qu'elle contient (feuille Vendre ouverte en bas de page, relevé de `verifs`) */
+  .ex-zone:not([hidden]) { animation: ex-in var(--dur-standard) var(--ease-entree) backwards; }
 }
 @keyframes ex-in { from { opacity: 0; transform: translateY(6px); } }
 
@@ -82,8 +84,6 @@
 .ex-row:hover { background: rgba(255, 255, 255, 0.04); }
 .ex-row .ex-go { flex: none; padding: 0 6px; font: 500 20px var(--title); color: var(--ink-3); }
 .ex-wish { color: var(--rose) !important; }
-.ex-cherche .mk > .mk-tools, .ex-cherche .mk-intro { display: none; }
-.ex-cherche .mk-head { justify-content: flex-end; margin: -34px 0 14px; }
 
 /* En cours */
 .ex-cours .pending { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; align-items: start; }
@@ -167,7 +167,6 @@
   .ex-tabs button { flex: 1 0 auto; padding: 0 8px; letter-spacing: 0.04em; white-space: nowrap; }
   .ex-search .ex-q { flex-basis: 100%; max-width: none; font-size: 16px; }
   .ex-results, .fy-deals, .fy-want-list, .ex-cours .pending { grid-template-columns: 1fr; }
-  .ex-cherche .mk-head { margin-top: 0; }
   .fy-card img, .fy-q { width: 84px; }
   .fy-pg { grid-template-columns: repeat(3, 1fr); }
 }
@@ -246,3 +245,88 @@
 .t-seal-t small { font: 500 12px var(--mono); color: var(--ink-3); }
 .ow-who b .ow-prof { color: inherit; text-decoration: none; }
 .ow-who b .ow-prof:hover, .ow-who b .ow-prof:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── (V3) MARCHÉ « façon Kyara » (views/market.ts, brief docs/chantiers/marche-kyara.md) : LA CARTE EST L'ANNONCE.
+   Onglets Acheter (grille d'annonces) et Vendre (ma collection en grille). Sous la carte : prix · écart au prix
+   conseillé (couleur = bon / mauvais prix) / vendeur. Pastilles de rareté = nos couleurs de rareté. */
+.ex-echanges .ex-cours:has(.pending:empty) { display: none; }
+.ex-echanges .ex-cours { margin-bottom: 8px; }
+.mk-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.mk-bar .mk-q { flex: 1 1 240px; min-width: 0; max-width: 440px; }
+.mk-rps { display: flex; align-items: center; gap: 4px; padding: 3px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); }
+.mk-rp { flex: none; width: 30px; height: 30px; padding: 0; border: 1px solid color-mix(in srgb, var(--rc) 75%, transparent); border-radius: var(--r-pill); background: color-mix(in srgb, var(--rc) 32%, #000); color: #fff; font: 600 12px var(--mono); transition: box-shadow var(--dur-rapide) var(--ease-standard), background-color var(--dur-rapide) var(--ease-standard); }
+.mk-rp.all { width: auto; padding: 0 12px; border-color: transparent; background: none; color: var(--ink-2); font-weight: 500; letter-spacing: 0.04em; }
+.mk-rp.r-mythic { border-color: transparent; background: conic-gradient(from 200deg, #b5344f, #d9982a, #6f9a74, #4c7cc2, #8a5cc2, #b5344f); text-shadow: 0 1px 2px #000; }
+.mk-rp.on { box-shadow: 0 0 0 2px #000, 0 0 0 3px #fff; }
+.mk-rp.all.on { background: #fff; color: #000; box-shadow: none; }
+.mk-fbtn { position: relative; min-height: 38px; padding: 0 16px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: none; color: var(--ink); font: 500 12px var(--mono); letter-spacing: 0.06em; }
+.mk-fbtn.on { border-color: #fff; }
+.mk-fdot { position: absolute; top: 5px; right: 7px; width: 6px; height: 6px; border-radius: var(--r-pill); background: #fff; }
+.mk-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; }
+.mk-more .chip { --rc: var(--ink-2); color: var(--ink-2); }
+.mk-more .chip.on { border-color: #fff; background: rgba(255, 255, 255, 0.12); color: #fff; }
+.mk-kind button { min-height: 34px; padding: 0 12px; }
+.mk-sortl { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-3); font: 500 12px var(--mono); }
+.mk-ssort { min-height: 38px; padding: 0 12px; border: 1px solid var(--gm-line-2); border-radius: var(--r-pill); background: #000; color: var(--ink); font: 500 12px var(--mono); }
+.mk-count { margin: 0 0 12px; color: var(--ink-3); font: 500 12px var(--mono); letter-spacing: 0.04em; }
+.mk-count:empty { display: none; }
+.mk-aside .ex-results { display: block; margin-bottom: 6px; }
+.mk-aside .ex-h { margin-top: 4px; }
+.ex-cat { display: grid; grid-auto-flow: column; grid-auto-columns: 92px; gap: 8px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: thin; }
+/* une annonce : la carte entière, puis deux lignes */
+.mk-g-open { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 20px 16px; }
+.mk-item { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.mk-item:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: var(--r-ctl); }
+.mk-item .tile { width: 100%; }
+.mk-meta { display: grid; gap: 3px; padding: 0 2px; }
+.mk-l1, .mk-l2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.mk-l1 { font: 600 17px var(--mono); }
+.mk-l2 { color: var(--ink-3); font: 500 11.5px var(--mono); }
+.mk-seller { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-end { flex: none; color: var(--ink-2); }
+.mk-item.mine .mk-seller { color: var(--ink-2); }
+.mk-gap { flex: none; font: 600 11.5px var(--mono); letter-spacing: 0.02em; }
+.mk-gap.good { color: #6f9a74; }
+.mk-gap.fair { color: var(--ink-3); }
+.mk-gap.up { color: #d9982a; }
+.mk-gap.high { color: #b5344f; }
+.mk-end { display: inline-flex; align-items: center; gap: 6px; }
+.mk-flag { color: var(--ink-3); font: 600 12px var(--mono); }
+.mk-flag.wish { color: #fff; }
+.mk-new { position: absolute; top: 6px; left: 6px; z-index: 2; padding: 2px 7px; border-radius: var(--r-pill); background: #fff; color: #000; font: 600 10px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+/* Vendre : mes ventes en rangée, puis ma collection */
+.mk-strip { display: grid; grid-auto-flow: column; grid-auto-columns: 118px; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+.mk-strip .mk-l1 { font-size: 13px; }
+.mk-strip .mk-l2 { display: none; }
+.mk-sell .mk-mine { margin-bottom: 18px; padding-bottom: 14px; }
+.mk-g-pick { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.mk-morecards { display: block; margin: 18px auto 0; }
+/* la feuille : fiche d'une annonce ou mise en vente */
+.mk-sheet-b { position: relative; }
+.mk-sheet-b > .mk-x { position: absolute; top: 12px; right: 12px; z-index: 3; }
+.mk-deal { display: grid; grid-template-columns: minmax(160px, 250px) 1fr; gap: 20px; align-items: start; }
+.mk-dname { margin: 4px 44px 6px 0; font: 600 22px/1.15 var(--title); }
+.mk-dsub { color: var(--ink-3); font: 500 12px var(--mono); }
+.mk-dpr { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 4px; font: 600 26px var(--mono); }
+.mk-dpr .mk-gap { font-size: 13px; }
+.mk-dpr .coin-ico { width: 20px; height: 20px; }
+.mk-dwho { color: var(--ink-2); font: 500 13px var(--mono); }
+.mk-dfoot { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.mk-dfoot .mk-buy, .mk-dfoot .mk-cancel { flex: 1 1 180px; width: auto; min-height: 46px; }
+.mk-price { padding-top: 6px; }
+.mk-chosen .tile { width: 100%; }
+@media (max-width: 860px) { .mk-chosen { width: 150px; } }
+.mk-prow .mk-cmp { margin-left: 6px; }
+.mk-pform .mk-go, .mk-tradef .mk-trade-go { align-self: flex-start; min-height: 44px; }
+.mk-auctionf { display: flex; flex-direction: column; gap: 12px; }
+@media (max-width: 560px) {
+  .mk-bar .mk-q { flex-basis: 100%; max-width: none; font-size: 16px; }
+  .mk-rps { flex: 1 1 auto; justify-content: space-between; }
+  .mk-rp { width: 28px; height: 28px; }
+  .mk-g-open { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 10px; }
+  .mk-g-pick { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .mk-l1 { font-size: 15px; }
+  .mk-deal { grid-template-columns: 1fr; gap: 14px; }
+  .mk-dtile { width: min(56vw, 230px); justify-self: center; }
+  .mk-dname { margin-right: 0; font-size: 20px; }
+}
