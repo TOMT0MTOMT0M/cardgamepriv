@@ -128,7 +128,18 @@ async function run(busy: () => boolean) {
       // palier 0 et fichiers à empreinte : le cache HTTP répond s'il les a (aucun octet) ; sinon un seul téléchargement
       // (la page : demandée sous son adresse de navigation `jeu/` — une réponse redirigée ne peut pas servir de page)
       const page = f === 'jeu/index.html';
-      const r = await fetch(page ? abs('jeu/') : abs(f), hashed(f) || page ? undefined : { cache: 'no-cache' });
+      let init: RequestInit | undefined = hashed(f) || page ? undefined : { cache: 'no-cache' };
+      // (audit perf 28/11) fichier sans empreinte déjà rangé (patch) : revalidé par son ETag — inchangé (304), rien
+      // n'est relu ni réécrit (avant : 31-52 Mo de musiques et d'effets réécrits à chaque version)
+      if (init && have.has(abs(f))) {
+        const tag = (await cache.match(abs(f)))?.headers.get('etag');
+        if (tag) init = { cache: 'no-store', headers: { 'If-None-Match': tag } };
+      }
+      const r = await fetch(page ? abs('jeu/') : abs(f), init);
+      if (r.status === 304) {
+        state.done += size;
+        return;
+      }
       const html = /text\/html/.test(r.headers.get('content-type') ?? '');
       if (!r.ok || r.status !== 200 || r.redirected || html !== page) return;
       await cache.put(abs(f), r);
