@@ -2376,13 +2376,22 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
   window.addEventListener('pagehide', () => el.isConnected && saveSeen());
   let sig = '';
   let viewerDirty = false;
+  // (+ exemplaires engagés : la forge et son compteur en dépendent)
+  const sigOf = (st: GameBackend['state']) => `${collectionSig(st)}|${st.wishlist.length}|${st.wishFams.join(',')}|${JSON.stringify(st.binders)}|${JSON.stringify(st.covers)}|${JSON.stringify([...lockedCards(st)])}|${st.ready}`;
+  // (audit perf n°14) page fermée : la signature (collection, classeurs, jaquettes, cartes engagées : plusieurs JSON.stringify) n'est
+  // plus calculée à chaque changement d'état ; la vue est marquée « à refaire » et `enter()` la redessine (toujours, et recale `sig`)
+  let stale = false;
   backend.onChange((st) => {
-    // (+ exemplaires engagés : la forge et son compteur en dépendent)
-    const now = `${collectionSig(st)}|${st.wishlist.length}|${st.wishFams.join(',')}|${JSON.stringify(st.binders)}|${JSON.stringify(st.covers)}|${JSON.stringify([...lockedCards(st)])}|${st.ready}`;
-    if (now === sig) return;
+    if (!el.isConnected) {
+      stale = true;
+      return;
+    }
+    const now = sigOf(st);
+    if (now === sig && !stale) return;
+    stale = false;
     sig = now;
-    if (el.isConnected && !open) render();
-    else if (el.isConnected && open) {
+    if (!open) render();
+    else {
       viewerDirty = true;
       if (browse[at]) renderActions(browse[at]);
     }
@@ -2466,6 +2475,9 @@ export function createCollectionView(backend: GameBackend, shell: Shell, getView
       preloadOwned(mine.keys());
       growBars = true;
       render();
+      // la vue vient d'être refaite à l'état d'aujourd'hui : plus « à refaire »
+      stale = false;
+      sig = sigOf(backend.state);
     },
     leave() {
       if (open) {
