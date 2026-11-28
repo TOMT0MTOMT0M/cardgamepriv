@@ -1422,7 +1422,11 @@ class GameNetClient {
     entries: Array<{ id: string; title: string; category: string; vote: number; note: string; updatedAt?: string | null }>;
     meta: { backend?: string; userAgent?: string; quality?: string; dpr?: number };
   }) {
-    if (!this.client && this.lazyUrl) this.client = new ConvexClient(this.lazyUrl);
+    // (adresse relue dans import.meta.env, constante au build : sans serveur — comparateur /miroir/ — ce code et la
+    // bibliothèque Convex disparaissent du build)
+    const url = (import.meta.env.VITE_CONVEX_URL as string | undefined)?.trim();
+    if (!url) throw new Error('Serveur non configuré (VITE_CONVEX_URL)');
+    if (!this.client && this.lazyUrl) this.client = new ConvexClient(url);
     if (!this.client) throw new Error('Serveur non configuré (VITE_CONVEX_URL)');
     return await this.client.mutation(api.labFeedback.submit, { ...args, sessionToken: this.sessionToken ?? undefined });
   }
