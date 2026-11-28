@@ -19,6 +19,7 @@ import type { RarityId } from './rarity';
 import { THEMES, catalogEntry, themeOpen, BEBOU_PACK, type CatalogEntry } from './sets/themes';
 import { starsOf, stakeValue, type StakeItem } from './economy';
 import { missionDay } from './missions';
+import { parisHour } from './parisTime';
 import { msgRef, str } from './msgRefs';
 
 /** Un booster misé : le bébou pack ou celui d'un thème ouvert. */
@@ -239,22 +240,8 @@ export function rouletteWinner<B extends { numbers: number[]; color?: string }>(
 }
 msgRef('rcolor', (p) => (isRouletteColor(p.colorId) ? colorLabel(p.colorId) : undefined));
 
-/** Formateur de l'heure de Paris, créé une seule fois (perf : `nextRouletteDraw` l'appelle minute par minute). */
-let hourFmt: Intl.DateTimeFormat | undefined;
-
-/** Heure (0..23) à Paris. */
-export function parisHour(now: number): number {
-  try {
-    // (« 01 h » en français : on lit la partie « heure » seule)
-    hourFmt ??= new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', hourCycle: 'h23' });
-    const h = hourFmt.formatToParts(now).find((p) => p.type === 'hour')?.value;
-    const n = Number(h);
-    if (Number.isFinite(n)) return n % 24;
-    throw new Error('heure introuvable');
-  } catch {
-    return (new Date(now).getUTCHours() + 1) % 24;
-  }
-}
+// (audit perf V3 n°10) `parisHour` vit dans parisTime.ts (sans catalogue) ; réexporté ici, imports inchangés
+export { parisHour };
 
 /** Prochain tirage (instant, 10 h ou 20 h à Paris), recherché à la minute près. */
 export function nextRouletteDraw(now: number): number {

@@ -1,6 +1,5 @@
 import type { MutationCtx, QueryCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
-import { FAM_ROW, famKeysOfCard } from '../src/core/wishFams';
 
 /**
  * ENVIES PAR CARTE (audit perf 12/11, décision 10 / A7-02, A7-03).
@@ -44,15 +43,8 @@ export async function syncWishes(ctx: MutationCtx, userId: Id<'users'>, list: re
   return n;
 }
 
-/**
- * (v2.1) Les joueurs qui veulent cette carte : envie directe OU famille voulue (src/core/wishFams.ts) — une lecture
- * indexée par clé (1 pour la carte, 1 ou 2 pour ses familles). Ceux qui l'ont déjà ne sont PAS écartés ici.
- */
-export async function wishersOfCard(ctx: QueryCtx | MutationCtx, cardId: string): Promise<Id<'users'>[]> {
-  const out = new Set<Id<'users'>>(await wishersOf(ctx, cardId));
-  for (const k of famKeysOfCard(cardId)) for (const id of await wishersOf(ctx, FAM_ROW + k)) out.add(id);
-  return [...out];
-}
+// (audit perf V3 n°10) `wishersOfCard` (envie directe OU famille voulue) est dans deals.ts, son seul lecteur : les
+// familles (src/core/wishFams.ts) lisent le catalogue, et ce fichier-ci est importé par launch.ts (abonnement de tous).
 
 /** Les joueurs qui ont cette carte dans leurs envies. */
 export async function wishersOf(ctx: QueryCtx | MutationCtx, cardId: string): Promise<Id<'users'>[]> {

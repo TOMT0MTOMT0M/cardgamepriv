@@ -2,14 +2,15 @@
 /**
  * (V3, lot notifications) rappels push : « ta série s'arrête à minuit » (20 h), « missions / cadeau du jour » (9 h - 21 h),
  * plafond d'un push par type et par jour, réglages (nouveaux types actifs par défaut, coupés), heure de Paris été / hiver,
- * résultat de la roulette aux joueurs qui ont misé (convex/push.ts remindTick, convex/games.ts drawRound).
+ * résultat de la roulette aux joueurs qui ont misé (convex/rappels.ts remindTick, convex/games.ts drawRound).
  */
 import { convexTest } from 'convex-test';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { api, internal } from './_generated/api';
 import schema from './schema';
 import type { Doc, Id } from './_generated/dataModel';
-import { remindSlots, prefsOf, PREFS_V3 } from './push';
+import { prefsOf, PREFS_V3 } from './push';
+import { remindSlots } from './rappels';
 import { cleanEcon, emptyEcon } from '../src/core/economy';
 
 const modules = import.meta.glob(['./**/*.ts', './**/*.js', '!./**/*.test.ts', '!./**/*.testlib.ts', '!./**/*.d.ts']);
@@ -41,7 +42,7 @@ async function sent(t: T): Promise<Array<Payload & { to: string }>> {
       return { ...a.payload, to: a.subs[0].endpoint.split('/').pop()! };
     });
 }
-const tick = (t: T) => t.mutation(internal.push.remindTick, {});
+const tick = (t: T) => t.mutation(internal.rappels.remindTick, {});
 const econ = (calendarDay?: string) => cleanEcon({ ...emptyEcon(), ...(calendarDay ? { calendarDay } : {}) });
 const mission = (id: string, done: boolean, claimed = false) => ({ id, kind: 'open', target: 3, progress: done ? 3 : 1, reward: 1, claimed });
 

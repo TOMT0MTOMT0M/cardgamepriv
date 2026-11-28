@@ -3,7 +3,8 @@ import { v, ConvexError } from 'convex/values';
 import { internalMutation, mutation, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
-import { STARTER_PACKS, assertOpen } from './launch';
+// (audit perf V3 n°10) pas './launch' : il importe la roulette, donc tout le catalogue, dans chaque module qui importe auth
+import { STARTER_PACKS, assertOpen } from './launchGate';
 import { BOOST_MS } from '../src/core/packRegen';
 import { syncPresence } from './presence';
 import { fm, feedMsg } from '../src/core/msgs';

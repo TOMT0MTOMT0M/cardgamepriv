@@ -28,8 +28,8 @@ import {
   type TheyWant,
 } from '../src/core/deals';
 import { seenAtAll, seenAtOf } from './presence';
-import { wishersOfCard, wishesReady } from './wishes';
-import { wantsCard } from '../src/core/wishFams';
+import { wishersOf, wishesReady } from './wishes';
+import { FAM_ROW, famKeysOfCard, wantsCard } from '../src/core/wishFams';
 import { fm } from '../src/core/msgs';
 import { invOf } from './inventory';
 import { ONLINE_MS } from '../src/core/online';
@@ -45,8 +45,19 @@ import { ONLINE_MS } from '../src/core/online';
  * `get`, `pickOptions`) ; chaque requête renvoie `reads` (documents lus) — mesuré dans convex/deals.test.ts.
  */
 
+/**
+ * (v2.1) Les joueurs qui veulent cette carte : envie directe OU famille voulue (src/core/wishFams.ts) — une lecture
+ * indexée par clé (1 pour la carte, 1 ou 2 pour ses familles). Ceux qui l'ont déjà ne sont PAS écartés ici.
+ * (audit perf V3 n°10) Ici et plus dans wishes.ts : les familles lisent le catalogue, wishes.ts est importé par launch.ts.
+ */
+async function wishersOfCard(ctx: QueryCtx | MutationCtx, cardId: string): Promise<Id<'users'>[]> {
+  const out = new Set<Id<'users'>>(await wishersOf(ctx, cardId));
+  for (const k of famKeysOfCard(cardId)) for (const id of await wishersOf(ctx, FAM_ROW + k)) out.add(id);
+  return [...out];
+}
+
 // « en ligne » : même fenêtre que la liste des joueurs (ONLINE_MS, src/core/online.ts, V3 : 12 min)
-const key = (c: { cardId: string; rarity: string }) => `${c.cardId}:${c.rarity}`;
+const key =(c: { cardId: string; rarity: string }) => `${c.cardId}:${c.rarity}`;
 const guardOf = (u: Doc<'users'>) => ({ protected: u.tradeProtected, wishlist: u.wishlist });
 const cardName = (id: string) => catalogCard(id)?.name ?? id;
 const starOf = (r: RarityId) => (r === 'secret' ? 'Bébou' : `${['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'].indexOf(r) + 1}★`);

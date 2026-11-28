@@ -35,9 +35,11 @@ crons.hourly('encheres : cloture a 21 h', { minuteUTC: 1 }, internal.auctions.cl
 crons.daily('retention : boosters ouverts de plus de 2 jours, fil de plus de 30 jours', { hourUTC: 4, minuteUTC: 30 }, internal.migrations.purgeOld, {});
 
 // ── (V3, lot notifications) rappels push : « ta série s'arrête à minuit » à 20 h, « missions / cadeau du jour » de 9 h
-// à 21 h (heure de Paris, calculée dans push.remindTick : la tâche passe chaque heure pile et ne lit que les joueurs
+// à 21 h (heure de Paris, calculée dans rappels.remindTick : la tâche passe chaque heure pile et ne lit que les joueurs
 // repérés par l'index lastSeenAt dans une fenêtre d'une heure)
 // (nom en ASCII seulement : Convex refuse un accent dans le nom d'une tâche, « Invalid cron identifier » au déploiement)
-crons.hourly('push : rappels serie et missions', { minuteUTC: 0 }, internal.push.remindTick, {});
+// (audit perf V3 n°10) avant : push.remindTick ; même nom de tâche, même code, déplacé dans rappels.ts (sans catalogue
+// dans push.ts)
+crons.hourly('push : rappels serie et missions', { minuteUTC: 0 }, internal.rappels.remindTick, {});
 
 export default crons;

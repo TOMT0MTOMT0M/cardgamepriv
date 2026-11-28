@@ -1,12 +1,12 @@
 import { fe } from '../src/core/errors';
 import { v, ConvexError } from 'convex/values';
-import { internalMutation, internalQuery, query, type MutationCtx, type QueryCtx } from './_generated/server';
+import { internalMutation, internalQuery, query, type MutationCtx } from './_generated/server';
 import type { Doc, TableNames } from './_generated/dataModel';
 import { internal } from './_generated/api';
 import { BOOST_MS } from '../src/core/packRegen';
-import { ROULETTE_SEED_COINS, seedRoulette } from './games';
 import { syncPresence } from './presence';
 import { syncWishes } from './wishes';
+import { LAUNCH_KEY, STARTER_PACKS, launchAt, launchConfig } from './launchGate';
 
 /**
  * OUVERTURE OFFICIELLE (07/11) — date d'ouverture + remise à zéro de la saison de test.
@@ -25,9 +25,11 @@ import { syncWishes } from './wishes';
  *  - GARDÉ : les suggestions (la file de Tom et Hugo) et les retours du labo.
  */
 
-/** (ouverture 07/11) tout le monde arrive avec la réserve pleine (15) et 24 h de recharge ×2 */
-export const STARTER_PACKS = 15;
-const KEY = 'launch';
+// (audit perf V3 n°10) réserve de départ, lecture de l'ouverture et refus avant l'ouverture : launchGate.ts (sans
+// catalogue, lu par auth.ts) ; réexportés ici
+export { STARTER_PACKS, assertOpen, launchAt } from './launchGate';
+const KEY = LAUNCH_KEY;
+const config = launchConfig;
 const BATCH = 400;
 
 /** Vidées entièrement, dans cet ordre (numéros d'impression avant la roulette : le cron rouvre une manche à neuf). */
@@ -58,29 +60,8 @@ const WIPE: TableNames[] = [
   'profileMedia',
 ];
 
-async function config(ctx: QueryCtx | MutationCtx) {
-  return await ctx.db
-    .query('appConfig')
-    .withIndex('by_key', (q) => q.eq('key', KEY))
-    .unique();
-}
-
-/** Instant d'ouverture (null = ouvert / pas de compte à rebours). */
-export async function launchAt(ctx: QueryCtx | MutationCtx): Promise<number | null> {
-  return (await config(ctx))?.launchAt ?? null;
-}
-
 /** Équipe = admin ou modérateur (Tom, Hugo) : passe le compte à rebours. */
 export const isStaff = (u: Pick<Doc<'users'>, 'isAdmin' | 'isModerator'> | null | undefined) => !!(u?.isAdmin || u?.isModerator);
-
-/** Création de compte refusée tant que ce n'est pas ouvert. */
-export async function assertOpen(ctx: MutationCtx) {
-  const at = await launchAt(ctx);
-  if (at && Date.now() < at) {
-    const t = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', hour: '2-digit', minute: '2-digit' }).format(at);
-    throw new ConvexError(fe('launch.1', { p0: t.replace(':', ' h ') }));
-  }
-}
 
 /** Pour le site (aussi sans être connecté) : compte à rebours, remise à zéro (nettoyage du stockage local). */
 export const status = query({
@@ -222,7 +203,10 @@ export const resetStep = internalMutation({
     }
     counts.users = removed;
     // roulette : pot de base pour la nouvelle saison (pièces + une 6★ offerte, en plus de la carte du site)
-    await seedRoulette(ctx, ROULETTE_SEED_COINS);
+    // (audit perf V3 n°10) par une sous-mutation (même transaction) : importer games.ts ici chargerait tout le catalogue
+    // dans ce module, donc à chaque `launch:status` (abonnement de tous les joueurs)
+    // (sans `coins` : ROULETTE_SEED_COINS, comme avant)
+    await ctx.runMutation(internal.games.seedRouletteCmd, {});
     // les suggestions des joueurs supprimés restent (auteur affiché « ? ») : c'est la file de travail de l'équipe
     const c = await config(ctx);
     if (c) await ctx.db.patch(c._id, { resetAt: now, lastReset: { startedAt: a.startedAt, done: true, finishedAt: now, counts } });

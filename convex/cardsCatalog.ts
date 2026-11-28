@@ -1,41 +1,12 @@
-import { v, type Infer } from 'convex/values';
 import { ALL_THEMES, catalogEntry, type CatalogEntry } from '../src/core/sets/themes';
 import { GUARANTEED_WEIGHTS, SLOT_WEIGHTS } from '../src/core/dropRates';
+import type { RarityId } from './cardRarity';
 
-export const rarityValidator = v.union(
-  v.literal('common'),
-  v.literal('uncommon'),
-  v.literal('rare'),
-  v.literal('epic'),
-  v.literal('legendary'),
-  v.literal('mythic'),
-  v.literal('secret'),
-);
-
-export type RarityId = Infer<typeof rarityValidator>;
-
-/** Sorte de booster : celui d'un thème, ou le bébou pack (tous les thèmes, seul pack à Bébous). */
-export const packKindValidator = v.union(v.literal('theme'), v.literal('bebou'));
-
-export const RARITY_TIER: Record<RarityId, number> = {
-  common: 0,
-  uncommon: 1,
-  rare: 2,
-  epic: 3,
-  legendary: 4,
-  mythic: 5,
-  secret: 6,
-};
-
-export const RARITY_LABEL: Record<RarityId, string> = {
-  common: 'Commune',
-  uncommon: 'Peu commune',
-  rare: 'Rare',
-  epic: 'Épique',
-  legendary: 'Légendaire',
-  mythic: 'Mythique',
-  secret: 'Secrète',
-};
+/**
+ * (audit perf V3 n°10) Les validateurs et tables de rareté vivent dans cardRarity.ts (sans catalogue) : un module qui
+ * n'en veut que ça l'importe de là. Réexportés ici pour les imports existants. CE fichier-ci charge le catalogue.
+ */
+export { RARITY_LABEL, RARITY_TIER, packKindValidator, rarityValidator, type RarityId } from './cardRarity';
 
 /**
  * Poids de tirage (source unique : src/core/dropRates.ts, partagée avec le client).

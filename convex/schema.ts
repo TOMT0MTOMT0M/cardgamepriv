@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
-import { packKindValidator, rarityValidator } from './cardsCatalog';
+// (audit perf V3 n°10) pas './cardsCatalog' : il charge tout le catalogue, et `schema` est importé par d'autres modules
+import { packKindValidator, rarityValidator } from './cardRarity';
 
 export const rolledCardValidator = v.object({
   cardId: v.string(),
