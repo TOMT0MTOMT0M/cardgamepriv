@@ -136,7 +136,10 @@
 .gm-art .drop { fill: #fff; opacity: 0; transform-box: fill-box; transform-origin: center; }
 .gm-art .drop.on { opacity: 0.85; }
 .gm-art .drop.pop { animation: gm-drop 640ms var(--ease-out, cubic-bezier(0.2, 0.8, 0.2, 1)) backwards; }
+/* (audit perf n°8) `pop2` = la même animation sous un autre nom : changer de nom la relance sans lecture forcée de mise en page (gridArt.ts, popDot) */
+.gm-art .drop.pop2 { animation: gm-drop2 640ms var(--ease-out, cubic-bezier(0.2, 0.8, 0.2, 1)) backwards; }
 @keyframes gm-drop { 0% { transform: scale(2.1); opacity: 1; } 55% { transform: scale(0.88); } 100% { transform: scale(1); } }
+@keyframes gm-drop2 { 0% { transform: scale(2.1); opacity: 1; } 55% { transform: scale(0.88); } 100% { transform: scale(1); } }
 /* ordinateur : platine du dessin en haut de la carte (200 px), le texte dessous */
 @media (min-width: 861px) {
   .gm-hub .gm-game { padding-top: 242px; min-height: 0; }

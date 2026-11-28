@@ -169,6 +169,30 @@ const rng = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) - 1) /
 let uid = 0;
 
 /**
+ * (audit perf n°15) UNE seule boucle d'images pour tous les dessins montés (3 sur l'accueil des Jeux) : un seul
+ * `requestAnimationFrame` par image au lieu de trois, mêmes appels dans le même ordre et avec la même heure.
+ */
+const frameFns = new Set<(now: number) => void>();
+let frameRaf = 0;
+const frameLoop = (now: number) => {
+  frameRaf = 0;
+  const fns = [...frameFns];
+  frameFns.clear();
+  for (const fn of fns) fn(now);
+};
+const requestFrame = (fn: (now: number) => void) => {
+  frameFns.add(fn);
+  frameRaf ||= requestAnimationFrame(frameLoop);
+};
+const cancelFrame = (fn: (now: number) => void) => {
+  frameFns.delete(fn);
+  if (!frameFns.size && frameRaf) {
+    cancelAnimationFrame(frameRaf);
+    frameRaf = 0;
+  }
+};
+
+/**
  * CURSEUR PARTAGÉ : toute la page Jeux est le champ magnétique. Un seul jeu d'écouteurs pour tous les dessins
  * (posé au premier dessin monté, retiré au dernier démonté) ; chaque dessin convertit la position dans son repère.
  */
@@ -445,9 +469,10 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   };
   const popDot = (el: SVGCircleElement) => {
     el.classList.add('on');
-    el.classList.remove('pop');
-    void el.getBoundingClientRect();
-    el.classList.add('pop');
+    // (audit perf n°8) relance de l'animation en changeant son NOM (pop ↔ pop2, mêmes images clés) : plus de lecture forcée de mise en page
+    const was = el.classList.contains('pop');
+    el.classList.toggle('pop', !was);
+    el.classList.toggle('pop2', was);
   };
 
   // ── curseur (repère du dessin, recalculé à chaque image depuis le curseur partagé), intensité du champ
@@ -458,6 +483,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
   let inside = false;
   let field = 0;
   let raf = 0;
+  let drewLast = false;
   let lastFrame = 0;
   let lastCall = 0;
   let lastRes = 0;
@@ -467,7 +493,8 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     if (!host.isConnected) return unlisten();
     if (raf) return;
     lastFrame = performance.now();
-    raf = requestAnimationFrame(tick);
+    raf = 1;
+    requestFrame(tick);
   };
   const unlisten: () => void = listenPointer(() => wake());
 
@@ -770,57 +797,76 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     }
 
     // ── rendu (canvas effacé puis redessiné : quelques traits)
-    ctx.setTransform(dpr, 0, 0, dpr, PAD * dpr, PAD * dpr);
-    ctx.clearRect(-PAD, -PAD, W, H);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    // épines du champ (instabilité de Rosensweig)
-    if (field > 0.02) {
-      ctx.strokeStyle = `rgba(255,255,255,${(0.5 * field).toFixed(3)})`;
-      ctx.lineWidth = 0.7;
-      // un seul trait pour toutes les pistes libres ; les pistes en partie cachées (carte de derrière) à part, découpées
-      let open = false;
-      for (const r of rails) {
-        if (r.ghost || mx < r.box[0] - A || mx > r.box[2] + A || my < r.box[1] - A || my > r.box[3] + A) continue;
-        if (r.hide) continue;
-        if (!open) {
-          ctx.beginPath();
-          open = true;
+    // (audit perf n°15) rien à dessiner (coulées en attente de départ ou éteintes, champ éteint) et rien dessiné à l'image
+    // d'avant : la toile est déjà vide, on ne l'efface pas de nouveau
+    let anything = field > 0.02;
+    if (!anything) {
+      for (const b of beads) {
+        if (b.delay <= 0 && Math.min(1, b.age / 0.15) * (1 - b.fade) > 0.01) {
+          anything = true;
+          break;
         }
-        spines(r, A, spd);
-      }
-      if (open) ctx.stroke();
-      for (const r of rails) {
-        if (!r.hide || r.ghost || mx < r.box[0] - A || mx > r.box[2] + A || my < r.box[1] - A || my > r.box[3] + A) continue;
-        ctx.save();
-        ctx.clip(r.hide, 'evenodd');
-        ctx.beginPath();
-        spines(r, A, spd);
-        ctx.stroke();
-        ctx.restore();
       }
     }
+    if (anything || drewLast) {
+      ctx.setTransform(dpr, 0, 0, dpr, PAD * dpr, PAD * dpr);
+      ctx.clearRect(-PAD, -PAD, W, H);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
 
-    for (const b of beads) {
-      if (b.delay > 0) continue;
-      const r = b.r;
-      const op = Math.min(1, b.age / 0.15) * (1 - b.fade);
-      if (op <= 0.01) continue;
-      if (r.hide) {
-        ctx.save();
-        ctx.clip(r.hide, 'evenodd');
+      // épines du champ (instabilité de Rosensweig)
+      if (field > 0.02) {
+        ctx.strokeStyle = `rgba(255,255,255,${(0.5 * field).toFixed(3)})`;
+        ctx.lineWidth = 0.7;
+        // un seul trait pour toutes les pistes libres ; les pistes en partie cachées (carte de derrière) à part, découpées
+        let open = false;
+        for (const r of rails) {
+          if (r.ghost || mx < r.box[0] - A || mx > r.box[2] + A || my < r.box[1] - A || my > r.box[3] + A) continue;
+          if (r.hide) continue;
+          if (!open) {
+            ctx.beginPath();
+            open = true;
+          }
+          spines(r, A, spd);
+        }
+        if (open) ctx.stroke();
+        for (const r of rails) {
+          if (!r.hide || r.ghost || mx < r.box[0] - A || mx > r.box[2] + A || my < r.box[1] - A || my > r.box[3] + A) continue;
+          ctx.save();
+          ctx.clip(r.hide, 'evenodd');
+          ctx.beginPath();
+          spines(r, A, spd);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
-      coulee(b, op);
-      if (r.hide) ctx.restore();
+
+      for (const b of beads) {
+        if (b.delay > 0) continue;
+        const r = b.r;
+        const op = Math.min(1, b.age / 0.15) * (1 - b.fade);
+        if (op <= 0.01) continue;
+        if (r.hide) {
+          ctx.save();
+          ctx.clip(r.hide, 'evenodd');
+        }
+        coulee(b, op);
+        if (r.hide) ctx.restore();
+      }
     }
+    drewLast = anything;
 
     // au repos complet (curseur immobile, plus rien ne bouge) la boucle s'endort ; le prochain geste la réveille
     let moving = field > 0.01 && field < 0.99;
     for (const b of beads) if (b.curve || b.delay > 0 || b.fade > 0 || Math.abs(b.v) > 2 || Math.abs(b.s - b.dir * b.len - b.tail) > 0.5) moving = true;
     const calm = inside && now - P.t > 2500 && !moving;
-    if (!calm && (beads.size || inside || field > 0.01)) raf = requestAnimationFrame(tick);
-    else if (!beads.size && !inside) ctx.clearRect(-PAD, -PAD, W, H);
+    if (!calm && (beads.size || inside || field > 0.01)) {
+      raf = 1;
+      requestFrame(tick);
+    } else if (!beads.size && !inside) {
+      ctx.clearRect(-PAD, -PAD, W, H);
+      drewLast = false;
+    }
   };
 
   // ── tracé initial (quand la carte devient visible), puis courant ambiant planifié
@@ -881,6 +927,7 @@ export function mountGridArt(host: HTMLElement, card: HTMLElement, scroller: HTM
     card.removeEventListener('pointerenter', enter);
     card.removeEventListener('pointerleave', leaveH);
     unlisten();
-    cancelAnimationFrame(raf);
+    cancelFrame(tick);
+    raf = 0;
   };
 }
