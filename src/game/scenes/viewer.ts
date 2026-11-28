@@ -466,6 +466,18 @@ export function createViewerScene(): ViewerScene {
         const pm = new Mesh(geo, [pf.holo.material, back, pe]);
         pm.frustumCulled = false;
         pm.position.z = camBase + 10;
+        // (audit perf V3 n°6) WebGPU : nœuds de la face (≈ 470) construits AVANT l'image hors champ, par étapes, en rendant
+        // la main entre deux (post.ts `compileObject`) — ils se construisaient d'un bloc dans cette image (110-220 ms au
+        // téléphone à chaque carte ouverte) ; l'image hors champ ne fait plus que l'envoi au GPU
+        if (pipe) {
+          await pipe.compileObject(pm);
+          if (my !== token) {
+            pm.dispatchEvent({ type: 'dispose' } as never);
+            pf.holo.material.dispose();
+            pe.dispose();
+            return nextArt.dispose();
+          }
+        }
         stage.scene.add(pm);
         warming++; // (rendu à la demande : ces deux images sont calculées même carte immobile)
         // (deux VRAIES images : `nextFrame` de core/art rend seulement la main, sans attendre un rendu ; 120 ms au plus,

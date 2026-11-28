@@ -1,4 +1,4 @@
-import { CanvasTexture, Color, Group, Mesh, MeshStandardNodeMaterial, SRGBColorSpace, type BufferGeometry, type PerspectiveCamera, type Raycaster, type Scene, type Texture } from 'three/webgpu';
+import { CanvasTexture, Color, Group, Mesh, MeshStandardNodeMaterial, SRGBColorSpace, type BufferGeometry, type Object3D, type PerspectiveCamera, type Raycaster, type Scene, type Texture } from 'three/webgpu';
 import { float, mix, normalMap, texture, uv, vec2 } from 'three/tsl';
 import { createPackGeometry, PACK, type PackArt } from '../../core/pack';
 import { inkSurface } from '../../core/packSticker';
@@ -79,6 +79,8 @@ interface Slot {
   front: MeshStandardNodeMaterial;
   back: MeshStandardNodeMaterial;
   textured: boolean;
+  /** (audit perf V3 n°2) matériaux texturés en cours de compilation (hors scène) : la pochette reste unie jusque-là */
+  pending?: boolean;
 }
 
 export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | undefined, opts: Wheel3DOpts = {}) {
@@ -118,12 +120,17 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
     return s;
   }
   function texturize(s: Slot) {
-    if (s.textured) return;
-    const art = getArt(s.key);
-    if (!art) return;
+    if (s.textured || s.pending) return;
+    if (dress(s.key, s.front, s.back)) s.textured = true;
+  }
+  /** habille deux matériaux du visuel du sachet `key` (false : visuel pas prêt, rien de changé) */
+  function dress(key: string, front: MeshStandardNodeMaterial, back: MeshStandardNodeMaterial): boolean {
+    const s = { front, back };
+    const art = getArt(key);
+    if (!art) return false;
     const f = shrink(art.front, texW);
     const b = shrink(art.back, backW);
-    if (!f) return;
+    if (!f) return false;
     // (A10-07) seules les copies réduites sont à nous ; une texture du sachet reprise telle quelle reste au sachet
     const mine = (t: Texture | null | undefined) => !!t && t !== art.front && t !== art.back && t !== art.creaseNormal && t !== art.frontNormal && t !== art.masks;
     if (mine(f)) owned.push(f);
@@ -161,7 +168,7 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
       }
     }
     s.front.needsUpdate = s.back.needsUpdate = true;
-    s.textured = true;
+    return true;
   }
 
   const tmp = new Color();
@@ -173,8 +180,38 @@ export function createWheel3D(scene: Scene, getArt: (key: string) => PackArt | u
      * AVANT d'envoyer les grandes textures au GPU (leurs toiles sont vidées à l'envoi, `PackArtOptions.releaseSources`).
      * Les petites textures partent au GPU à la première image où la pochette est montrée (quelques centaines de Ko).
      */
-    prepare(key: string) {
-      texturize(slot(key));
+    prepare(key: string, compile?: (o: Object3D) => Promise<boolean>) {
+      const s = slot(key);
+      if (!compile || s.textured || s.pending) return texturize(s);
+      /*
+       * (audit perf V3 n°2) pochette déjà montrée unie (préchauffée au chargement) : l'habiller sur place reconstruisait
+       * ses deux shaders d'un bloc dans l'image suivante de la vitrine (2 × 30-40 ms au PC ralenti ×4, pour chacun des
+       * 4 autres visuels arrivés après l'affichage). Deux matériaux neufs, habillés pareil, sont compilés hors scène
+       * (`compile`, par étapes) puis prennent la place des unis : même rendu, quelques images plus tard.
+       */
+      const front = new MeshStandardNodeMaterial({ roughness: 0.46, metalness: 0.12, map: blank });
+      const back = new MeshStandardNodeMaterial({ roughness: 0.6, metalness: 0.05, map: blank });
+      if (!dress(key, front, back)) {
+        front.dispose();
+        back.dispose();
+        return;
+      }
+      owned.push(front, back);
+      front.color.copy(s.front.color);
+      back.color.copy(s.back.color);
+      s.pending = true;
+      void compile(new Mesh(geo, [front, back]))
+        .catch(() => false)
+        .then(() => {
+          s.pending = false;
+          if (slots.get(key) !== s || s.textured) return; // (oubliée entre-temps : ses matériaux partent avec la roue)
+          const old = [s.front, s.back];
+          s.front = front;
+          s.back = back;
+          s.body.material = [front, back];
+          s.textured = true;
+          old.forEach((m) => m.dispose());
+        });
     },
     /**
      * (13/11) oublie la pochette `key` (booster du moment remplacé par un autre événement) : la prochaine fois, elle
