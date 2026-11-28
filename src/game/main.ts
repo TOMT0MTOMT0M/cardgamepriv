@@ -310,6 +310,20 @@ function showActiveTab(smooth: boolean) {
   if (!a || navEl.scrollWidth <= navEl.clientWidth) return;
   navEl.scrollTo({ left: Math.max(0, a.offsetLeft - (navEl.clientWidth - a.offsetWidth) / 2), behavior: smooth && !lessMotion.matches ? 'smooth' : 'auto' });
 }
+/** (audit perf n°8) changement de page : pastille + onglet actif + flèche regroupés dans la prochaine image (lectures puis écritures, une seule mise en page) */
+let navSyncRaf = 0;
+let navSyncAnimate = false;
+function queueNavSync(animate: boolean) {
+  navSyncAnimate ||= animate;
+  navSyncRaf ||= requestAnimationFrame(() => {
+    navSyncRaf = 0;
+    const a = navSyncAnimate;
+    navSyncAnimate = false;
+    placePill(a);
+    showActiveTab(a);
+    syncNavMore();
+  });
+}
 
 /**
  * Hauteur de l'en-tête au téléphone : elle n'est plus figée (3 rangées de cibles de 40 px, la largeur décide) ; on la
@@ -963,7 +977,9 @@ function swapPage(apply: () => void, shift = 0): ViewTransition | null {
     // mise à jour qui n'arrive pas (fil principal pris) : on change de page quand même, et on coupe
     const late = window.setTimeout(() => (trip('mise à jour tardive'), run()), 600);
     // transition qui s'éternise : on la saute
-    const stuck = window.setTimeout(() => (trip('transition trop longue'), t.skipTransition()), 800 + parseFloat(getComputedStyle(root).getPropertyValue('--dur-emphatique') || '400'));
+    // (audit perf n°8) durée lue dans le jeton JS (celui que `bindMotionVars` publie en `--dur-emphatique`), pas par
+    // getComputedStyle(root) : lecture forcée de style juste après `vt-pages` (48-62 ms au téléphone)
+    const stuck = window.setTimeout(() => (trip('transition trop longue'), t.skipTransition()), 800 + DUR.emphatique());
     t.updateCallbackDone.then(() => clearTimeout(late), (e: unknown) => (clearTimeout(late), console.error(e), trip(e)));
     t.ready.catch(() => undefined); // (transition sautée : normal)
     void t.finished.catch(() => undefined).then(() => (clearTimeout(late), clearTimeout(stuck), root.classList.remove('vt-pages')));
@@ -986,7 +1002,10 @@ function navDir(from: string, to: string): number {
   return Math.sign(at(to) - at(from));
 }
 /** Distance du glissement (px) : discrète, ≈ 6 % de la largeur, entre 16 et 40 px. */
-const vtShift = (dir: number) => dir * Math.round(Math.min(40, Math.max(16, innerWidth * 0.06)));
+// (audit perf n°8) largeur mise en mémoire (lire `innerWidth` force la mise en page : 80 ms à chaque changement de page au téléphone)
+let vtWidth = innerWidth;
+window.addEventListener('resize', () => (vtWidth = innerWidth), { passive: true });
+const vtShift = (dir: number) => dir * Math.round(Math.min(40, Math.max(16, vtWidth * 0.06)));
 /**
  * (V3, lot 05) La vitrine 3D glisse avec la page qu'elle accompagne (même distance, même jeton, même courbe que
  * `::view-transition-*(pages)`) : la roue du téléphone, dessinée dans le canvas, ne se décolle pas de ses étiquettes.
@@ -1244,10 +1263,10 @@ async function boot() {
       else a.removeAttribute('aria-current');
     });
     meEl.querySelectorAll<HTMLElement>('.mm-link').forEach((a) => a.classList.toggle('on', a.dataset.r === key));
-    placePill(changed);
-    // nav qui défile (téléphone, 7 onglets) : l'onglet actif est ramené au milieu
-    showActiveTab(changed);
-    syncNavMore();
+    // (audit perf n°8) pastille, onglet ramené au milieu (nav qui défile, téléphone) et flèche « › » : lus et écrits dans
+    // UNE image, une fois la nouvelle page posée — plus de mise en page forcée de l'ancienne page (34-82 ms) ni de
+    // recalculs répétés à chaque navigation
+    queueNavSync(changed);
     meEl.querySelector('.user')?.classList.toggle('on', key === 'profil');
     const show = (v: View, fade: boolean, vtWanted = false) => {
       const vt = vtWanted && canVT();

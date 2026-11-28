@@ -77,9 +77,15 @@ body[data-route='evenement'] .views { pointer-events: auto; }
 .av-door[data-s='today'] { z-index: 2; }
 .av-door[data-s='today'] .av-front b { color: #fff; text-shadow: 0 0 14px color-mix(in srgb, var(--av-glow) 80%, transparent); }
 .av-door[data-s='today'] .av-front { box-shadow: inset 0 0 0 1px var(--av-glow), inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 12px -8px #000; }
-.av-door[data-s='today'] .av-leaf { animation: av-leak var(--amb-flotte) var(--ease-standard) infinite; }
+/* (audit perf n°12) la lueur qui respire n'anime plus `box-shadow` (propriété non composée : recalcul de style + repeinte de toute
+   la scène 3D à chaque image, 3,7 ms par image au PC ralenti ×4, tout le mois de décembre) : les deux états de l'ombre sont posés
+   une fois sur deux pastilles du volet, qui se fondent l'une dans l'autre par `opacity` (composée, rien à recalculer) */
+.av-door[data-s='today'] .av-leaf::before, .av-door[data-s='today'] .av-leaf::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
+.av-door[data-s='today'] .av-leaf::before { box-shadow: 0 0 14px 0 color-mix(in srgb, var(--av-glow) 35%, transparent); animation: av-leak-a var(--amb-flotte) var(--ease-standard) infinite; }
+.av-door[data-s='today'] .av-leaf::after { opacity: 0; box-shadow: 0 0 0 2px color-mix(in srgb, var(--av-glow) 55%, transparent), 0 0 30px 4px color-mix(in srgb, var(--av-glow) 55%, transparent); animation: av-leak-b var(--amb-flotte) var(--ease-standard) infinite; }
 .av-door[data-s='today'] .av-niche::before { opacity: 0.55; }
-@keyframes av-leak { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--av-glow) 0%, transparent), 0 0 14px 0 color-mix(in srgb, var(--av-glow) 35%, transparent); } 50% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--av-glow) 55%, transparent), 0 0 30px 4px color-mix(in srgb, var(--av-glow) 55%, transparent); } }
+@keyframes av-leak-a { 50% { opacity: 0; } }
+@keyframes av-leak-b { 50% { opacity: 1; } }
 @media (hover: hover) {
   .av-door[data-s='today']:hover .av-leaf, .av-door[data-s='late']:hover .av-leaf { transform: rotateY(-16deg); transition-duration: var(--dur-emphatique); }
   .av-door[data-s='today']:hover .av-niche::before, .av-door[data-s='late']:hover .av-niche::before { opacity: 0.8; }

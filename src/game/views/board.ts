@@ -776,12 +776,12 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
   // ── temps réel : tableau (abonnement tant que la vue est ouverte) + mes annonces / offres (toasts quand on est là)
   let seen = new Map<string, string>();
   let seenReady = false;
-  function notify() {
+  function notify(silent = false) {
     const b = backend.state.board;
     const now = new Map<string, string>();
     for (const l of b.mine) for (const o of l.offers ?? []) now.set(`in:${o.id}`, o.status);
     for (const o of b.offers) now.set(`out:${o.id}`, o.status);
-    if (seenReady && el.isConnected) {
+    if (seenReady && el.isConnected && !silent) {
       for (const [k, st] of now) {
         const was = seen.get(k);
         if (was === st) continue;
@@ -801,12 +801,22 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
     seen = now;
     seenReady = true;
   }
+  const sigOf = (s: GameBackend['state']) => JSON.stringify([s.board.mine.map((l) => [l.id, l.status, (l.offers ?? []).map((o) => o.id + o.status)]), s.board.offers.map((o) => o.id + o.status), s.collection.length]);
   let boardSig = '';
+  // (audit perf n°14) page fermée : plus de signature ni de rendu à chaque changement d'état ; la vue est marquée « à refaire »
+  // (`stale`) et se remet à jour (silencieusement : pas de toast sur ce qui s'est passé en son absence) au prochain affichage
+  let stale = false;
   backend.onChange((s) => {
-    const sig = JSON.stringify([s.board.mine.map((l) => [l.id, l.status, (l.offers ?? []).map((o) => o.id + o.status)]), s.board.offers.map((o) => o.id + o.status), s.collection.length]);
-    if (sig === boardSig) return;
+    if (!el.isConnected) {
+      stale = true;
+      return;
+    }
+    const sig = sigOf(s);
+    if (sig === boardSig && !stale) return;
+    const wasStale = stale;
+    stale = false;
     boardSig = sig;
-    notify();
+    notify(wasStale);
     render();
   });
 
@@ -823,6 +833,12 @@ export function createBoard(backend: GameBackend, deps: BoardDeps): BoardView {
         all = rows;
         render();
       });
+      if (stale) {
+        // revenue après une absence : mémoire des offres et signature remises à l'état d'aujourd'hui, sans toast
+        stale = false;
+        boardSig = sigOf(backend.state);
+        notify(true);
+      }
       render();
       if (sessionStorage.getItem('bebou.boardGive')) openCreate();
     },
