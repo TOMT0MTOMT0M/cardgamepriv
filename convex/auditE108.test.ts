@@ -24,7 +24,9 @@ describe('E1-08 — session en une requête', () => {
     });
     const args = { sessionToken: 'tok' };
     const [me, eco, mis, all] = [await t.query(api.users.me, args), await t.query(api.economy.state, args), await t.query(api.missions.mine, args), await t.query(api.session.get, args)];
-    expect(all).toEqual({ me, eco, missions: mis });
+    // (audit perf V3 n°17) sauf les valeurs « ancien client » de l'économie, que session.get n'envoie plus
+    const { completions: _c, achievements: _a, ...ecoV2 } = eco!;
+    expect(all).toEqual({ me, eco: ecoV2, missions: mis });
     expect(all!.me._id).toBe(userId);
     // sans jeton, ou jeton inconnu : null, comme les trois
     expect(await t.query(api.session.get, {})).toBeNull();

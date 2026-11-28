@@ -629,7 +629,23 @@ export const history = query({
     if (!u) return { duels: [], royales: [] };
     const duels = (await ctx.db.query('duels').withIndex('by_status', (q) => q.eq('status', 'done')).order('desc').take(200)).filter((d) => d.sides.some((s) => s.userId === u._id)).slice(0, 25);
     const royales = (await ctx.db.query('royales').withIndex('by_status', (q) => q.eq('status', 'done')).order('desc').take(200)).filter((r) => r.players.some((p) => p.userId === u._id)).slice(0, 25);
-    return { duels, royales };
+    // (audit perf V3 n°17) la liste n'affiche que les noms, les étoiles et le gagnant (src/game/views/games.ts,
+    // historyPage, pareil sur `master`) ; la partie touchée est relue entière par `games.duel` / `games.royale`. Partent
+    // donc vides : les cartes tirées (`result.packs`, `result.awarded` des royales), les boosters misés d'un duel et les
+    // avatars. Même forme de document (champs vides ou facultatifs) : rien ne casse chez un client déjà en ligne.
+    // Mesuré (convex/retoursLegers.test.ts) : 25 + 25 parties 441 Ko → 32 Ko ; au plus gros (10 boosters, royales à 8) 1,5 Mo → 40 Ko.
+    return {
+      duels: duels.map((d) => ({
+        ...d,
+        sides: d.sides.map(({ avatarUrl: _a, ...s }) => ({ ...s, packs: [] })),
+        ...(d.result ? { result: { ...d.result, packs: [] } } : {}),
+      })),
+      royales: royales.map((r) => ({
+        ...r,
+        players: r.players.map(({ avatarUrl: _a, ...p }) => p),
+        ...(r.result ? { result: { ...r.result, packs: [], awarded: [] } } : {}),
+      })),
+    };
   },
 });
 

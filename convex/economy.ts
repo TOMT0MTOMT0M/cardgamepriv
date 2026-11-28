@@ -69,7 +69,13 @@ function calendarOf(u: Doc<'users'>, now: number) {
 }
 
 /** Tout ce que l'interface affiche de l'économie (portefeuille, calendrier, missions de la semaine, primes en attente). */
-export async function ecoView(ctx: QueryCtx, u: Doc<'users'>, now: number) {
+/**
+ * `legacy` : ajoute `completions` / `achievements`, des valeurs sûres pour l'onglet resté ouvert sur le client d'avant
+ * le 07/11 (il lisait `economy.state`). (audit perf V3 n°17) `session.get` ne les envoie plus : tous ses clients (depuis
+ * le 12/11, `master` compris) les recalculent avec leur collection et écrasent ces champs (src/game/ecoOnline.ts) —
+ * ≈ 0,45 Ko de moins à chaque écriture sur le joueur.
+ */
+export async function ecoView(ctx: QueryCtx, u: Doc<'users'>, now: number, legacy = true) {
   const econ = econOf(u);
   // (perf 07/11) PLUS de lecture de l'inventaire ici : cette requête était ré-exécutée à chaque écriture sur le joueur
   // (pièces, missions, battement de cœur) et relisait toute sa collection (2e poste de lecture de base du mois).
@@ -83,8 +89,12 @@ export async function ecoView(ctx: QueryCtx, u: Doc<'users'>, now: number) {
     calendar: calendarOf(u, now),
     weekly: { ...currentWeekly(u.weekly as WeeklyState | undefined, u._id, now), resetAt: nextWeekReset(now) },
     // onglet resté ouvert sur l'ancien client : des valeurs sûres (le nouveau client recalcule les vraies)
-    completions: [] as Array<{ id: string; label: string; kind: string; size: number; reward: number }>,
-    achievements: { stats: achievementStats(statsFrom([], achInput), econ), claimable: [] as string[] },
+    ...(legacy
+      ? {
+          completions: [] as Array<{ id: string; label: string; kind: string; size: number; reward: number }>,
+          achievements: { stats: achievementStats(statsFrom([], achInput), econ), claimable: [] as string[] },
+        }
+      : {}),
     // (20/11) calendrier de l'Avent : cases ouvertes cette année, god packs offerts en attente (convex/avent.ts)
     advent: { opened: adventOpened(u), godPacks: u.godPacks ?? 0 },
     // (20/11) abonnement (convex/abo.ts) : fin du mois payé, demande « j'ai payé » en attente

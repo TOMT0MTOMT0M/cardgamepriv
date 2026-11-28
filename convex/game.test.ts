@@ -535,7 +535,7 @@ describe('perf 07/11 : moins de ré-exécutions', () => {
     const s = await t.query(api.economy.state, { sessionToken: alice.token });
     expect(s?.achInput.packsOpened).toBe(0);
     expect(s?.completions).toEqual([]);
-    expect(s?.achievements.claimable).toEqual([]);
+    expect(s?.achievements?.claimable).toEqual([]);
   });
 });
 

@@ -17,6 +17,8 @@ export const get = query({
     const user = await getUserByToken(ctx, sessionToken);
     if (!user) return null;
     const now = Date.now();
-    return { me: meView(user, now), eco: await ecoView(ctx, user, now), missions: missionsView(user, now) };
+    // (audit perf V3 n°17) sans les valeurs « ancien client » de l'économie (`legacy`, voir ecoView) : renvoyé en entier
+    // à chaque écriture sur le joueur, et tous les clients de cette requête les recalculent
+    return { me: meView(user, now), eco: await ecoView(ctx, user, now, false), missions: missionsView(user, now) };
   },
 });
