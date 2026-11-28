@@ -1,4 +1,4 @@
-import { MirroredRepeatWrapping, RenderPipeline, RenderTarget, type Camera, type Scene } from 'three/webgpu';
+import { MirroredRepeatWrapping, RenderPipeline, RenderTarget, Vector2, type Camera, type Object3D, type Scene } from 'three/webgpu';
 import { Fn, Loop, emissive, float, int, luminance, mix, mrt, output, pass, rtt, smoothstep, uv, vec2, vec4, viewportSize } from 'three/tsl';
 import type { LabContext } from './Experiment';
 import type { N } from './tsl';
@@ -95,6 +95,18 @@ export function createPipeline(ctx: LabContext, scene: Scene, camera: Camera, op
     async compile(opts: { real?: boolean } = {}) {
       checkDepth();
       await compilePassAsync(ctx.renderer, scenePass, opts.real === true && ctx.isWebGPU);
+    },
+    /**
+     * (audit perf V3 n°6) UN objet (hors scène ou caché), compilé seul dans la configuration RÉELLE de la passe (WebGPU) :
+     * graphe de nœuds construit en asynchrone, par étapes, en rendant la main au navigateur entre deux (`compileAsync`),
+     * puis pipelines créés en parallèle. Sa 1re image dans la scène ne construit plus rien : avant, ≈ 470 nœuds d'une
+     * face de carte se construisaient d'un bloc dans cette image (110-220 ms au téléphone, à chaque carte neuve). Mêmes
+     * nœuds, mêmes pipelines, même rendu. Renvoie false sans rien faire hors WebGPU (l'appelant garde son chemin).
+     */
+    async compileObject(obj: Object3D): Promise<boolean> {
+      if (!ctx.isWebGPU) return false;
+      checkDepth();
+      return compileObjectInPass(ctx.renderer, scenePass, obj);
     },
     /**
      * (audit 06/11) Une image rendue hors écran (cible 4×4) : crée les VRAIS pipelines de la passe (MRT émissif, MSAA,
@@ -229,6 +241,67 @@ export async function compilePassAsync(renderer: LabContext['renderer'], passNod
     await (renderer as unknown as { compileAsync(s: unknown, c: unknown): Promise<void> }).compileAsync(pn.scene, pn.camera);
   } catch (e) {
     console.warn('[post] compilation de la passe', e);
+  }
+}
+
+type PassPriv = {
+  scene: object;
+  camera: unknown;
+  renderTarget?: { samples: number };
+  options?: { samples?: number };
+  contextNode?: unknown;
+  _mrt?: unknown;
+  setSize?: (w: number, h: number) => void;
+};
+type RendererObj = RendererPriv & {
+  samples: number;
+  getDrawingBufferSize(v: Vector2): Vector2;
+  compileAsync(obj: unknown, camera: unknown, targetScene?: unknown): Promise<void>;
+};
+const _size = new Vector2();
+
+/**
+ * `PassNode.compileAsync` (three r187) pour UN objet de la scène de la passe : même préparation de la cible (échantillons,
+ * taille, MRT), puis `renderer.compileAsync(obj, caméra, scène de la passe)` — la scène de la passe
+ * sert de référence (lumières, environnement, clés de cache : celles de la vraie image). Garde de précompilation comme
+ * `compilePassAsync`. false si un champ privé attendu manque (autre version de three) : rien n'est fait.
+ */
+async function compileObjectInPass(renderer: LabContext['renderer'], passNode: unknown, obj: Object3D): Promise<boolean> {
+  const pn = passNode as PassPriv;
+  const r = renderer as unknown as RendererObj;
+  if (!pn.renderTarget || !pn.options || typeof pn.setSize !== 'function' || !('_mrt' in pn) || typeof r.compileAsync !== 'function') return false;
+  // (nœud de contexte de passe : il resterait sur le moteur pendant les pauses — pas le cas des scènes du jeu)
+  if (pn.contextNode != null) return false;
+  if (!installPreCompileGuard(r)) return false;
+  const key = pn.renderTarget as object;
+  const g = guarded.get(key) ?? { rt: r.getRenderTarget(), mrt: r.getMRT(), n: 0 };
+  g.n++;
+  guarded.set(key, g);
+  // un objet caché ou « culled » ne serait pas soumis : compilé quoi qu'il arrive. three r187 relève les objets à
+  // compiler pendant l'appel (partie synchrone de `compileAsync`) : ils sont remis comme avant aussitôt après, avant
+  // toute image — un objet caché dans la scène (maille d'un sachet) ne s'affiche jamais
+  const culled = obj.frustumCulled;
+  const vis = obj.visible;
+  try {
+    pn.renderTarget.samples = pn.options.samples === undefined ? r.samples : pn.options.samples;
+    r.getDrawingBufferSize(_size);
+    pn.setSize(_size.width, _size.height);
+    r.setRenderTarget(pn.renderTarget);
+    r.setMRT(pn._mrt);
+    obj.frustumCulled = false;
+    obj.visible = true;
+    const done = r.compileAsync(obj, pn.camera, pn.scene);
+    obj.frustumCulled = culled;
+    obj.visible = vis;
+    await done;
+    return true;
+  } catch (e) {
+    console.warn('[post] compilation réelle d’un objet', e);
+    return false;
+  } finally {
+    r.setRenderTarget(g.rt);
+    r.setMRT(g.mrt);
+    if (--g.n <= 0) guarded.delete(key);
   }
 }
 

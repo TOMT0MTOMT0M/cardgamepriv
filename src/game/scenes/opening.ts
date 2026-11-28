@@ -530,6 +530,8 @@ export function createOpeningScene(): OpeningScene {
   let releaseTargets: (() => void) | null = null;
   /** compile les pipelines de la scène pour la cible réelle de la passe (voir setup, WebGPU ; WebGL2 : variante canvas) ; repli : stage.compile() */
   let compileReal: () => Promise<void> = () => stage.compile();
+  /** (audit perf V3 n°6) compile UN objet hors scène pour la cible réelle (WebGPU, post.ts `compileObject`) ; false : rien de fait */
+  let compileObj: (o: Object3D) => Promise<boolean> = async () => false;
   let key: DirectionalLight;
   const rig = new Group();
   const packRig = new Group();
@@ -737,6 +739,8 @@ export function createOpeningScene(): OpeningScene {
   let packHover = false;
   /** vitrine (téléphone) : soulèvement « touche-moi » jusqu'à cet instant (s, horloge de la scène) */
   let hintLiftUntil = 0;
+  /** (audit perf V3 n°4) soulèvement en cours dû à la seule invite (aucun survol depuis) : la vitrine reste « calme » */
+  let liftByHint = false;
   let sceneT = 0;
   /** roue des boosters en 3D (téléphone) et dernière pose reçue */
   let wheel3d: Wheel3D | null = null;
@@ -1191,7 +1195,7 @@ export function createOpeningScene(): OpeningScene {
       arts.set(k, a);
       // la roue en réduit les toiles tout de suite : elles sont vidées à l'envoi des grandes textures au GPU
       // (13/11) le booster du moment aussi : il a sa pochette dans la roue (shop.ts syncEventSleeve)
-      wheel3d?.prepare(k);
+      wheel3d?.prepare(k, (o) => compileObj(o));
       api.onThumb?.(k);
       if (wantKey === k) {
         wantKey = null;
@@ -2180,6 +2184,11 @@ export function createOpeningScene(): OpeningScene {
           if (i % 2 === 1 && i < tex.length - 1) await nextFrame();
         }
       }
+      // (audit perf V3 n°6) WebGPU : son graphe de nœuds (≈ 470 pour une face) construit ici, par étapes, avec ses
+      // pipelines, AVANT d'entrer dans la scène — il se construisait d'un bloc dans la 1re image où la carte était
+      // soumise (5 images de 93 à 140 ms par booster au téléphone, juste après la déchirure)
+      await compileObj(sl.mesh);
+      if (!alive()) break;
       await nextFrame(); // une carte par frame : pas d'à-coup pendant la brûlure
       if (!alive()) break; // booster abandonné (reset) : inutile de continuer
     }
@@ -3162,6 +3171,7 @@ export function createOpeningScene(): OpeningScene {
     },
     hintPulse() {
       hintLiftUntil = sceneT + 0.55;
+      liftByHint = true;
     },
     fanRects() {
       if (phase !== 'done' || !slots.length) return null;
@@ -3768,6 +3778,7 @@ export function createOpeningScene(): OpeningScene {
       // version sûre du lot E (post.ts : la cible du moteur est rendue à chaque pause de la compilation — sinon une
       // image rendue pendant l'attente partait dans la cible de la passe et l'écran restait figé)
       compileReal = () => pl.compile({ real: true });
+      compileObj = (o) => pl.compileObject(o);
       const bl = pl.own(bloom(pl.emissive!, 0.35, 0.5, 0.0)) as unknown as N;
       /*
        * (perf 06/11) POST-TRAITEMENT À LA DEMANDE, AU BIT PRÈS. Un effet dont la contribution est nulle n'est plus
@@ -3880,7 +3891,7 @@ export function createOpeningScene(): OpeningScene {
       // préchauffage des shaders : une carte factice par rareté (+ variante photo des Bébous), même graphe que les vraies
       const dummyArt = c.bag.add(generateCardArt(LAB_CARDS[0], 'common', { scale: 0.25 }));
       const dummies: Mesh[] = [];
-      for (let t = 0; t <= 6; t++) {
+      const makeDummy = (t: number) => {
         const tier = Math.min(5, t);
         const face = buildFace(dummyArt, tier, t === 6);
         // (perf 06/11) les trois formes de tranche des vraies cartes (buildSlot) : unie, dorée « teasée » (secrète),
@@ -3890,8 +3901,17 @@ export function createOpeningScene(): OpeningScene {
         const m = new Mesh(cardGeo, [face.holo.material, backMat, edge]);
         m.position.set((t - 3) * 0.1, 0, -0.4);
         dummies.push(m);
-        stage.scene.add(m);
-      }
+        return m;
+      };
+      /*
+       * (audit perf V3 n°2) WebGPU : les 7 cartes factices ne sont plus compilées sous l'écran de chargement — ≈ 40 % de
+       * la construction des shaders du démarrage (0,8 s de fil principal au PC ralenti ×4) et 7 gros pipelines que le
+       * téléphone recompile à chaque lancement. Elles le sont une à une, hors scène, dans la configuration réelle de la
+       * passe, une fois la vitrine affichée (voir plus bas). Une vraie carte n'en dépend plus : buildAll compile chacune
+       * avant de la poser (n°6). WebGL2 : comme avant (l'image de préchauffage crée leurs programmes réels).
+       */
+      const lateDummies = c.isWebGPU;
+      if (!lateDummies) for (let t = 0; t <= 6; t++) stage.scene.add(makeDummy(t));
       // roue des boosters en 3D (sélection en version téléphone, ≤ 860 px de large) : matériaux créés maintenant pour
       // être compilés avec le reste. (07/11) Toujours créée, même en qualité « ordinateur » : un téléphone réglé en
       // haute qualité, ou une fenêtre étroite, montre aussi les mini-boosters 3D (5 petits maillages, rien à payer sinon)
@@ -3956,6 +3976,21 @@ export function createOpeningScene(): OpeningScene {
       queueMicrotask(() => api.onWheelReady?.());
       // retirées de la scène mais gardées en vie : leurs pipelines restent en cache pour les vraies cartes
       dummies.forEach((m) => stage.scene.remove(m));
+      // (audit perf V3 n°2) WebGPU : les cartes factices, après l'affichage de la vitrine (fondu de l'écran de chargement
+      // passé), vitrine au repos, une par une ; jamais dans la scène (rien ne s'affiche), gardées en vie comme avant
+      if (lateDummies) {
+        let off = false;
+        c.bag.fn(() => (off = true));
+        const later = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+        void (async () => {
+          await later(1500);
+          for (let t = 0; t <= 6; t++) {
+            while (!off && (phase !== 'display' || document.hidden)) await later(400);
+            if (off) return;
+            await compileObj(makeDummy(t)).catch((e) => console.warn('[opening] cartes factices', e));
+          }
+        })();
+      }
       // (audit 12/11, S09 / E4-23) cartes à DEUX illustrations (double face, lenticulaire — des Bébous secrets) : leur
       // graphe de face n'était préchauffé nulle part, son pipeline naissait à la première révélation. Préparé APRÈS
       // l'affichage de la boutique (rien d'ajouté au chargement), vitrine au repos, une face à la fois, hors champ.
@@ -3975,6 +4010,9 @@ export function createOpeningScene(): OpeningScene {
           m.frustumCulled = false;
           m.position.z = camBase + 10; // derrière la caméra : soumis au rendu (nœuds, pipelines), aucun pixel
           m.updateMatrixWorld(true);
+          // (audit perf V3 n°6) WebGPU : compilée hors scène, par étapes — posée dans la scène, la vitrine construisait
+          // son graphe d'un bloc dans l'image suivante (≈ 80 ms au PC ralenti ×4), avant que `compileReal` ne s'en charge
+          if (await compileObj(m)) return;
           stage.scene.add(m);
           try {
             await compileReal();
@@ -4531,6 +4569,7 @@ export function createOpeningScene(): OpeningScene {
         lastNdc.set(9, 9);
       }
       packLift += ((packHover || (phase === 'display' && sceneT < hintLiftUntil) ? 1 : 0) - packLift) * (1 - Math.exp(-dt * (packHover ? 10 : 7)));
+      if (packHover) liftByHint = false;
       // curseur : maintenir sur le booster scellé, toucher pour révéler, main sur une carte de l'éventail
       const cur = phase === 'sealed' ? (holding ? 'grabbing' : 'grab') : phase === 'opened' || phase === 'shown' ? 'pointer' : (phase === 'done' && hovered >= 0) || packHover ? 'pointer' : (display && reel?.cursor) || '';
       if (!ctx.overlay.hidden && ctx.canvas.style.cursor !== cur) ctx.canvas.style.cursor = cur;
@@ -4588,7 +4627,9 @@ export function createOpeningScene(): OpeningScene {
       const tx = ctx.input.tiltX, ty = ctx.input.tiltY;
       const tiltMoving = Math.abs(tx - lastTilt.x) + Math.abs(ty - lastTilt.y) > 0.004;
       lastTilt.set(tx, ty);
-      const calm = ctx.quality === 'mobile' && phase === 'display' && !ctx.input.down && !tiltMoving && !spinTl?.isActive() && !tl?.isActive() && Math.abs(dispK - 1) < 0.01 && Math.abs(focusCur - focusT) < 0.5 && packLift < 0.01;
+      // (audit perf V3 n°4) le soulèvement de l'invite (+2,5 % en ≈ 1,2 s, toutes les 5,2 s) reste en demi-cadence : même
+      // courbe, même temps réel ; il annulait le calme 23 % du temps (salves pleine cadence mesurées au téléphone)
+      const calm = ctx.quality === 'mobile' && phase === 'display' && !ctx.input.down && !tiltMoving && !spinTl?.isActive() && !tl?.isActive() && Math.abs(dispK - 1) < 0.01 && Math.abs(focusCur - focusT) < 0.5 && (packLift < 0.01 || (liftByHint && !packHover));
       feedArts();
       // roue des boosters (téléphone) : posée juste avant le rendu ; une roue qui tourne = pas d'image sautée
       if (wheel3d) {
