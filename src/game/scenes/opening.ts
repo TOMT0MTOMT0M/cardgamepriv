@@ -92,7 +92,7 @@ import { onReducedMotionChange } from '../../core/motion';
 import { perfMark } from '../../core/perfLog';
 import { createCardGeometry } from '../../core/cardModel';
 import { EASE, Spring } from '../../core/ease';
-import { dropBakes, loadBakes, loadTearBakes, loadedBakes, loadedBakesOf, TearBakePlayer, type BakeFamily, type TearBake } from '../../core/tearBake';
+import { allowMoreBakes, dropBakes, loadBakes, loadTearBakes, loadedBakes, loadedBakesOf, TearBakePlayer, type BakeFamily, type TearBake } from '../../core/tearBake';
 import type { TearBakeEvent, TearBakeHeader } from '../../core/tearBakeFormat';
 import { dropShatters, loadShatters, loadedShatters, ShatterPlayer } from '../../core/shatterBake';
 import type { ShatterBake } from '../../core/shatterFormat';
@@ -3339,6 +3339,7 @@ export function createOpeningScene(): OpeningScene {
           await nextFrame();
         }
         artsLoopDone = true;
+        allowMoreBakes(() => phase === 'display' || phase === 'done'); // (audit perf 28/11, n°11) variantes de déchirure suivantes, au repos
       };
       c.bag.fn(() => thumbCache.forEach((u) => u && URL.revokeObjectURL(u)));
       const packGeo = c.bag.add(createPackGeometry(48, 72, { folds: false }));

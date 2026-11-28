@@ -11,6 +11,7 @@ import { PAD_LOOP_S } from '../src/core/sound/padBank';
 import { CHIME_BASES, CHIME_SIZES, NOTE_BASES } from '../src/core/sound/ids';
 import { peakAt, velocityCurve } from '../src/core/sound/motion';
 import { EASE } from '../src/core/ease';
+import { SOUND_PRINT, SOUND_REV } from '../src/core/sound/rev';
 
 let failed = 0;
 const check = (ok: boolean, msg: string) => {
@@ -72,6 +73,11 @@ for (const [id, clips] of Object.entries({ ...bank, ...mythic, ...pad, ...open }
     }
   });
 }
+// (audit perf 28/11) les sons cuits sont rangés sur l'appareil sous SOUND_REV : si une recette change, la révision doit monter
+const print = (b: Record<string, { ch: Float32Array[] }[]>) => Math.round(Object.values(b).flat().reduce((s, c) => s + c.ch.reduce((t, x) => { let a = 0; for (let k = 0; k < x.length; k++) a += Math.abs(x[k]); return t + a; }, 0), 0));
+const prints = { main: print(bank), mythic: print(mythic), pad: print(pad), ouvertures: print(open) };
+for (const k of Object.keys(prints) as (keyof typeof prints)[])
+  check(prints[k] === SOUND_PRINT[k], `livre « ${k} » : les recettes ont changé (empreinte ${prints[k]}, attendu ${SOUND_PRINT[k]}) — monter SOUND_REV (${SOUND_REV}) et mettre SOUND_PRINT à ${JSON.stringify(prints)} dans src/core/sound/rev.ts`);
 // tout ce que le moteur (audio.ts) demande existe
 const needed = ['tap', 'tick', 'press', 'pop', 'land', 'thud', 'boom', 'coin', 'crack', 'foil', 'paper', 'air', ...NOTE_BASES.map((d) => `note${d}`), ...CHIME_SIZES.flatMap((s) => CHIME_BASES.map((b) => `chime${s}${b}`))];
 for (const id of needed) check(SOUND_IDS.includes(id), `son attendu par le moteur absent de la banque : ${id}`);

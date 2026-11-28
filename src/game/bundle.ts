@@ -98,8 +98,16 @@ async function run(busy: () => boolean) {
   };
 
   // économie de données / 2G : le socle seulement ; stockage presque plein : pas les médias lourds
-  const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection;
   let maxTier = conn?.saveData || /2g/.test(conn?.effectiveType ?? '') ? 0 : 2;
+  // (audit perf 28/11, n°5) données mobiles : pas les 31 Mo de musiques et d'effets (palier 2) d'office. Les musiques se
+  // chargent à l'écoute (le service worker les range à ce moment) ; le palier 2 est complété à un lancement en Wi-Fi
+  // (`todo` ne retient que ce qui manque), ou d'un geste par « Tout télécharger » (downloadBundle ignore ce plafond).
+  // Type de réseau inconnu (Chrome sur ordinateur, Firefox…) : `effectiveType` autre que « 4g » vaut données mobiles ;
+  // aucune information (iPhone) : comme avant.
+  const kind = conn?.type;
+  const mobile = kind === 'cellular' || ((!kind || kind === 'unknown' || kind === 'other') && !!conn?.effectiveType && conn.effectiveType !== '4g');
+  if (mobile) maxTier = Math.min(maxTier, 1);
   try {
     const est = await navigator.storage?.estimate?.();
     if (est?.quota && est.quota - (est.usage ?? 0) < 40e6) maxTier = Math.min(maxTier, 1);

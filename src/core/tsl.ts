@@ -3,6 +3,7 @@
  * interférence de couche mince spectrale, rotation 2D, courbes.
  */
 import { NOISE_PERIOD, NOISE_SIZE, burnNoiseValues, noisePixels } from './noiseData';
+import { calcGet, calcPut } from './calcCache';
 import { Fn, Loop, cos, dot, float, floor, fract, hash, length, min, mix, sin, vec2, vec3, sqrt, max, clamp, luminance, texture } from 'three/tsl';
 import { ClampToEdgeWrapping, DataTexture, DataUtils, HalfFloatType, LinearFilter, LinearMipmapLinearFilter, RGBAFormat, RepeatWrapping, UnsignedByteType } from 'three/webgpu';
 
@@ -187,6 +188,12 @@ function wrapNoise(data: Uint8Array): DataTexture {
   return t;
 }
 
+/**
+ * (audit perf 28/11, n°7) Pixels du bruit et valeurs du bruit de brûlure : identiques à chaque lancement, rangés sur
+ * l'appareil (calcCache.ts) et relus au lieu d'être recalculés dans un worker. À MONTER dès que noiseData.ts change.
+ */
+const NOISE_REV = 'bruit-v1';
+
 let noiseReady: Promise<void> | null = null;
 /**
  * (audit 12/11, S06 / E2-01) PIXELS DU BRUIT CALCULÉS DANS UN WORKER, pour le jeu : 68 ms sur PC au profil du démarrage,
@@ -213,15 +220,22 @@ export function preloadNoise(): Promise<void> {
       done();
     };
     const local = () => void (filled || fill(noisePixels()));
-    try {
-      w = new Worker(new URL('./noise.worker.ts', import.meta.url), { type: 'module' });
-      w.onmessage = (e: MessageEvent<Uint8Array>) => fill(e.data);
-      w.onerror = w.onmessageerror = local;
-      w.postMessage(0);
-      guard = window.setTimeout(local, 5000);
-    } catch {
-      local();
-    }
+    const compute = () => {
+      try {
+        w = new Worker(new URL('./noise.worker.ts', import.meta.url), { type: 'module' });
+        w.onmessage = (e: MessageEvent<Uint8Array>) => {
+          // (rangé d'abord : `fill` copie les pixels, la copie du cache est prise tout de suite)
+          calcPut('bruit', NOISE_REV, 'pixels', [e.data]);
+          fill(e.data);
+        };
+        w.onerror = w.onmessageerror = local;
+        w.postMessage(0);
+        guard = window.setTimeout(local, 5000);
+      } catch {
+        local();
+      }
+    };
+    void calcGet('bruit', NOISE_REV, 'pixels').then((hit) => (hit?.length === 1 && hit[0].byteLength === NOISE_SIZE * NOISE_SIZE * 4 ? fill(hit[0]) : compute()));
   }));
 }
 
@@ -242,16 +256,23 @@ export function burnNoise(W: number, H: number, packW: number, packH: number): P
       done(d);
     };
     const local = () => void (settled || finish(burnNoiseValues(W, H, packW, packH)));
-    try {
-      if (typeof Worker === 'undefined') return local();
-      w = new Worker(new URL('./noise.worker.ts', import.meta.url), { type: 'module' });
-      w.onmessage = (e: MessageEvent<Float64Array>) => finish(e.data);
-      w.onerror = w.onmessageerror = local;
-      w.postMessage({ burn: [W, H, packW, packH] });
-      guard = window.setTimeout(local, 5000);
-    } catch {
-      local();
-    }
+    const rest = `brulure-${W}x${H}-${packW}x${packH}`;
+    const compute = () => {
+      try {
+        if (typeof Worker === 'undefined') return local();
+        w = new Worker(new URL('./noise.worker.ts', import.meta.url), { type: 'module' });
+        w.onmessage = (e: MessageEvent<Float64Array>) => {
+          calcPut('bruit', NOISE_REV, rest, [e.data]);
+          finish(e.data);
+        };
+        w.onerror = w.onmessageerror = local;
+        w.postMessage({ burn: [W, H, packW, packH] });
+        guard = window.setTimeout(local, 5000);
+      } catch {
+        local();
+      }
+    };
+    void calcGet('bruit', NOISE_REV, rest).then((hit) => (hit?.length === 1 && hit[0].byteLength === W * H * 8 ? finish(new Float64Array(hit[0].buffer, hit[0].byteOffset, W * H)) : compute()));
   });
 }
 
