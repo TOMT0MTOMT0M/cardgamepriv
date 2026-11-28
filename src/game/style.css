@@ -2781,6 +2781,9 @@ a.btn-primary, a.btn-primary:visited { color: #000000; }
 .if-maj .if-entry[open] > summary::after { transform: rotate(225deg); margin-top: -2px; }
 .if-maj .if-entry > summary:hover::after { border-color: var(--ink); }
 .if-maj .if-entry[open] > summary { border-bottom: 1px solid var(--line); }
+/* (audit perf n°8) entrées fermées : leur contenu n'est pas du tout mis en page (le contenu caché par défaut de Chrome était remis en page
+   d'un bloc ~1 s après l'arrivée sur la page — 58 entrées, 225 points, ≈ 270 ms de fil bloqué au PC ralenti ×4) ; ouvrir une entrée l'affiche comme avant */
+.if-maj .if-entry:not([open])::details-content { display: none; }
 .if-maj .if-date { font-size: 11px; }
 .if-maj .if-tag { font-size: 10.5px; padding: 3px 9px; }
 .if-maj .if-e-t { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
