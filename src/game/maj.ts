@@ -21,7 +21,7 @@ const FORCE_KEY = 'bebou.maj-force';
  * dès que le jeu est rouvert ou revient au premier plan (le cas de l'appli posée sur l'écran d'accueil, restée des jours en
  * arrière-plan), il se met à jour seul — jamais pendant une ouverture de booster (on attend la fin).
  * `hardUpdate()` (aussi derrière « Réparer et mettre à jour » du menu du profil) :
- *  - vide les caches du jeu (cartes déjà peintes, plis, nom moulé) ; GARDE les illustrations (adresses versionnées,
+ *  - vide les caches du jeu (cartes déjà peintes ; plis, nom moulé et calculs versionnés seulement pour « Réparer ») ; GARDE les illustrations (adresses versionnées,
  *    toujours justes), le jeu installé par le service worker en V2 (fichiers à empreinte : un patch ne reprend que ce qui
  *    change, la page elle-même passe toujours par le réseau d'abord) et tout le stockage local : connexion, réglages,
  *    son, visite guidée, pastilles lues ;
@@ -40,7 +40,12 @@ export async function hardUpdate(target = '') {
   requestAnimationFrame(() => veil.classList.add('on'));
   const step = async () => {
     try {
-      if ('caches' in window) for (const k of await caches.keys()) if (/^bebou-/.test(k) && !/^bebou-(art|garde|app)-/.test(k)) await caches.delete(k);
+      // (audit perf 28/11, n°7) mise à jour d'un patch (`target` = le nouveau build) : `bebou-calc`, `bebou-plis` et
+      // `bebou-nom-moule` survivent — leurs clés portent une version (calcCache.ts, CREASE_VERSION, LABEL_VERSION) que le
+      // patch monte s'il change leur calcul ; les vider refaisait 5-6 s de workers au téléphone après chaque patch.
+      // « Réparer » (sans cible) vide tout, comme avant.
+      const keep = target ? /^bebou-(art-|garde-|app-|calc$|plis$|nom-moule$)/ : /^bebou-(art|garde|app)-/;
+      if ('caches' in window) for (const k of await caches.keys()) if (/^bebou-/.test(k) && !keep.test(k)) await caches.delete(k);
     } catch {
       /* stockage refusé : on recharge quand même */
     }

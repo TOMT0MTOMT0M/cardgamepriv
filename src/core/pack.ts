@@ -6,6 +6,7 @@ import { FONT_PACK } from './fonts';
 import { ensureFonts } from './art';
 import { encodeNormal, type N } from './tsl';
 import { perfMark } from './perfLog';
+import { calcGet, calcPut } from './calcCache';
 import { LABEL_RELIEF, moldFront, reliefFromCoverage, type ReliefMap } from './packLabel';
 import { CRH, CRW, PACK, PH, PW, creaseMapData, creaseRidge, creaseSigned, lcg, packRestZ } from './packCrease';
 
@@ -423,7 +424,7 @@ async function simplePackArt(style: PackStyle, release = false): Promise<PackArt
   let seed = 7;
   for (const ch2 of `${style.name}|${style.ground}`) seed = (Math.imul(seed, 31) + ch2.charCodeAt(0)) >>> 0;
   const C = await creaseMap(ch, (seed % 9973) + 1);
-  const molded = label ? await moldedLabel(F, C.n, label.text, label.px) : null;
+  const molded = label ? await moldedLabel(F, C.n, label.text, label.px, `${Math.round(ch)}|${(seed % 9973) + 1}`) : null;
   const FN = molded?.normal ?? null;
   const aniso = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 4 : 8;
   // `keep` : toile à ne pas vider (la face avant sert encore de vignette si le nom moulé n'a pas fourni la sienne)
@@ -504,7 +505,24 @@ function labelToCache(text: string, px: number, r: ReliefMap) {
   }
 }
 
-async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCanvasElement, text: string, px: number): Promise<{ normal: HTMLCanvasElement; thumb: HTMLCanvasElement }> {
+/**
+ * (audit perf 28/11, n°7) Le RÉSULTAT du mélange (normales de la face avant, ombrage de cavité, vignette) est gardé lui
+ * aussi (calcCache.ts, gzip : ~0,25 Mo par sachet) : avant, seul le relief l'était et le worker refaisait le mélange
+ * pour chacun des 6 sachets à chaque lancement (0,6-0,7 s au téléphone). La clé porte tout ce dont il dépend : version
+ * du nom et des plis, graine des plis, taille, mise en page du texte (la police de repli la change), réglages du relief.
+ */
+type MoldOut = { normal: Uint8ClampedArray; ao: Float32Array; shade: Float32Array };
+const moldRest = (creaseId: string, text: string, px: number, w: number, h: number, x0: number, y0: number) =>
+  `${creaseId}-${PW}x${PH}-${px}-${w}x${h}@${x0},${y0}-${JSON.stringify(LABEL_RELIEF)}-${text}`;
+async function moldFromCache(rest: string, w: number, h: number): Promise<MoldOut | null> {
+  const hit = await calcGet('nom', `${LABEL_VERSION}.${CREASE_VERSION}`, rest);
+  if (!hit || hit.length !== 3) return null;
+  const [n, a, s] = hit;
+  if (n.byteLength !== PW * PH * 4 || a.byteLength !== w * h * 4 || s.byteLength !== w * h * 4) return null;
+  return { normal: new Uint8ClampedArray(n.buffer, n.byteOffset, n.byteLength), ao: new Float32Array(a.buffer, a.byteOffset, w * h), shade: new Float32Array(s.buffer, s.byteOffset, w * h) };
+}
+
+async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCanvasElement, text: string, px: number, creaseId: string): Promise<{ normal: HTMLCanvasElement; thumb: HTMLCanvasElement }> {
   const t0 = performance.now();
   const ss = LABEL_RELIEF.ss;
   F.g.font = `400 ${px}px ${FONT_PACK}`;
@@ -512,12 +530,14 @@ async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCan
   const pad = Math.round(px * 0.3);
   const w = Math.min(PW, Math.ceil(tw + 2 * pad)), h = Math.ceil(px * 1.5 + 2 * pad);
   const x0 = Math.round(PW / 2 - w / 2), y0 = Math.round(PH * 0.5 - h / 2);
-  let relief = await labelFromCache(text, px);
-  const cached = !!relief && relief.w === w && relief.hgt === h; // même mise en page que la toile actuelle
+  const rest = moldRest(creaseId, text, px, w, h, x0, y0);
+  let out: (MoldOut & { relief?: ReliefMap }) | null = await moldFromCache(rest, w, h).catch(() => null);
+  let relief = out ? null : await labelFromCache(text, px);
+  const cached = !!out || (!!relief && relief.w === w && relief.hgt === h); // même mise en page que la toile actuelle
   if (!cached) relief = null;
   // couverture du texte (rastérisation ×2 avec la police du jeu : quelques ms, sur le thread principal)
   let cov: Uint8ClampedArray | undefined;
-  if (!relief) {
+  if (!relief && !out) {
     const L = makeCanvas(w * ss, h * ss, true);
     L.g.fillStyle = '#fff';
     L.g.font = `400 ${px * ss}px ${FONT_PACK}`;
@@ -529,30 +549,34 @@ async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCan
     for (let k = 0; k < cov.length; k++) cov[k] = id[k * 4 + 3];
     L.c.width = L.c.height = 0; // libère la toile tout de suite (iOS)
   }
-  const cn = (creaseN.getContext('2d') as Ctx).getImageData(0, 0, CRW, CRH).data;
-  // (07/11, perf) relief + mélange aux normales des plis : dans le WORKER (repli : ici, mêmes fonctions)
-  let out: { normal: Uint8ClampedArray; ao: Float32Array; shade: Float32Array; relief?: ReliefMap };
-  let where = 'worker';
-  try {
-    // seules les normales sont TRANSFÉRÉES (relues sur la toile au besoin) ; relief et couverture sont copiés (petits)
-    // pour rester utilisables par le repli
-    out = await inWorker({ kind: 'mold', creaseN: cn, x0, y0, px, relief: relief ?? undefined, cov, covW: w * ss, covH: h * ss }, [cn.buffer]);
-  } catch {
-    where = 'principal';
-    // le worker a emporté les normales : on les relit sur la toile
-    const cn2 = (creaseN.getContext('2d') as Ctx).getImageData(0, 0, CRW, CRH).data;
-    const rel = relief ?? (cov ? reliefFromCoverage(cov, w * ss, h * ss, px) : null);
-    if (!rel) throw new Error('relief du nom indisponible');
-    out = { ...moldFront(cn2, CRW, CRH, PW, PH, rel, x0, y0), relief: relief ? undefined : rel };
+  let where = 'cache';
+  if (!out) {
+    const cn = (creaseN.getContext('2d') as Ctx).getImageData(0, 0, CRW, CRH).data;
+    // (07/11, perf) relief + mélange aux normales des plis : dans le WORKER (repli : ici, mêmes fonctions)
+    where = 'worker';
+    try {
+      // seules les normales sont TRANSFÉRÉES (relues sur la toile au besoin) ; relief et couverture sont copiés (petits)
+      // pour rester utilisables par le repli
+      out = await inWorker({ kind: 'mold', creaseN: cn, x0, y0, px, relief: relief ?? undefined, cov, covW: w * ss, covH: h * ss }, [cn.buffer]);
+    } catch {
+      where = 'principal';
+      // le worker a emporté les normales : on les relit sur la toile
+      const cn2 = (creaseN.getContext('2d') as Ctx).getImageData(0, 0, CRW, CRH).data;
+      const rel = relief ?? (cov ? reliefFromCoverage(cov, w * ss, h * ss, px) : null);
+      if (!rel) throw new Error('relief du nom indisponible');
+      out = { ...moldFront(cn2, CRW, CRH, PW, PH, rel, x0, y0), relief: relief ? undefined : rel };
+    }
+    if (out!.relief) labelToCache(text, px, out!.relief);
+    calcPut('nom', `${LABEL_VERSION}.${CREASE_VERSION}`, rest, [out!.normal, out!.ao, out!.shade], 24);
   }
-  if (out.relief) labelToCache(text, px, out.relief);
+  const res = out!;
   const rw = w, rh = h;
   const N = makeCanvas(PW, PH);
-  N.g.putImageData(new ImageData(out.normal as Uint8ClampedArray<ArrayBuffer>, PW, PH), 0, 0);
+  N.g.putImageData(new ImageData(res.normal as Uint8ClampedArray<ArrayBuffer>, PW, PH), 0, 0);
   // ombrage de cavité (au pied des lettres) : la même teinte, juste un peu d'ombre portée
   const fimg = F.g.getImageData(x0, y0, rw, rh);
   for (let k = 0; k < rw * rh; k++) {
-    const a = out.ao[k];
+    const a = res.ao[k];
     if (a >= 0.999) continue;
     fimg.data[k * 4] *= a;
     fimg.data[k * 4 + 1] *= a;
@@ -564,7 +588,7 @@ async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCan
   T.g.drawImage(F.c, 0, 0);
   const timg = T.g.getImageData(x0, y0, rw, rh);
   for (let k = 0; k < rw * rh; k++) {
-    const sh = out.shade[k];
+    const sh = res.shade[k];
     if (!sh) continue;
     for (let c = 0; c < 3; c++) timg.data[k * 4 + c] = Math.max(0, Math.min(255, timg.data[k * 4 + c] * sh));
   }

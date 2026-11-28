@@ -1,4 +1,5 @@
 import { DataTexture, LinearFilter, LinearMipmapLinearFilter, NoColorSpace, RGBAFormat, RepeatWrapping, UnsignedByteType } from 'three/webgpu';
+import { calcGet, calcPut } from '../calcCache';
 import { POKE_TEX_SIZES, pokeTexData, type PokeTexData, type PokeTexName } from './texData';
 
 /**
@@ -40,6 +41,11 @@ function wrap(n: number, data: Uint8Array, name: PokeTexName): DataTexture {
   return t;
 }
 const NAMES = Object.keys(POKE_TEX_SIZES) as PokeTexName[];
+/**
+ * (audit perf 28/11, n°7) Les pixels sont les mêmes à chaque lancement : rangés sur l'appareil (calcCache.ts), relus aux
+ * lancements suivants au lieu d'être recalculés (1,4-1,7 s de worker au téléphone). À MONTER dès que texData.ts change.
+ */
+const TEX_REV = 'pokeTex-v1';
 /** attente maximale du worker avant de calculer sur le fil principal */
 const WORKER_PATIENCE_MS = 5000;
 function pack(of: (name: PokeTexName) => DataTexture): PokeTextures {
@@ -58,7 +64,8 @@ export function createPokeTextures(): PokeTextures {
  * pixels passés en flottants) tournait sur le fil principal pendant le montage de la scène d'ouverture — 237 ms sur
  * PC au profil du démarrage, dans la tâche la plus longue du chargement sur téléphone. Les textures existent tout de
  * suite (noires), leurs pixels arrivent du worker moins d'une seconde après, bien avant la première carte à reflet.
- * Pas de worker, ou worker en échec : calcul sur le fil principal, comme avant.
+ * Pas de worker, ou worker en échec : calcul sur le fil principal, comme avant. Aux lancements suivants : pixels relus
+ * du cache (TEX_REV), aucun worker.
  */
 export function createPokeTexturesDeferred(): PokeTextures {
   if (typeof Worker === 'undefined') return createPokeTextures();
@@ -83,18 +90,27 @@ export function createPokeTexturesDeferred(): PokeTextures {
     stop();
     if (!filled) fill(pokeTexData());
   };
-  try {
-    w = new Worker(new URL('./tex.worker.ts', import.meta.url), { type: 'module' });
-    w.onmessage = (e: MessageEvent<Record<PokeTexName, PokeTexData>>) => {
-      fill(e.data);
-      stop();
-    };
-    w.onerror = w.onmessageerror = local;
-    w.postMessage(0);
-    // worker muet (script qui ne finit pas de charger) : pas de textures noires, on calcule ici
-    guard = window.setTimeout(local, WORKER_PATIENCE_MS);
-  } catch {
-    local();
-  }
+  const compute = () => {
+    try {
+      w = new Worker(new URL('./tex.worker.ts', import.meta.url), { type: 'module' });
+      w.onmessage = (e: MessageEvent<Record<PokeTexName, PokeTexData>>) => {
+        fill(e.data);
+        stop();
+        calcPut('pokeTex', TEX_REV, '', NAMES.map((k) => e.data[k].data));
+      };
+      w.onerror = w.onmessageerror = local;
+      w.postMessage(0);
+      // worker muet (script qui ne finit pas de charger) : pas de textures noires, on calcule ici
+      guard = window.setTimeout(local, WORKER_PATIENCE_MS);
+    } catch {
+      local();
+    }
+  };
+  void calcGet('pokeTex', TEX_REV).then((hit) => {
+    // (même nombre d'octets que prévu, sinon le cache est d'une autre forme : on recalcule)
+    if (hit && hit.length === NAMES.length && NAMES.every((k, i) => hit[i].byteLength === POKE_TEX_SIZES[k] * POKE_TEX_SIZES[k] * 4)) {
+      fill(Object.fromEntries(NAMES.map((k, i) => [k, { n: POKE_TEX_SIZES[k], data: hit[i] }])) as unknown as Record<PokeTexName, PokeTexData>);
+    } else compute();
+  });
   return out;
 }
