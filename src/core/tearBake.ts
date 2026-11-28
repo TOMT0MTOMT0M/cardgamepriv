@@ -88,7 +88,27 @@ async function fetchBake(fam: BakeFamily, i: number): Promise<TearBake | null> {
 // (27/11) décodage déplacé tel quel dans tearBakeFormat.ts (pur, testable sous Node) ; même nom exporté ici
 export { decode };
 
-/** Lance (une fois) le chargement d'une famille : la première variante tout de suite, les suivantes l'une après l'autre. */
+/**
+ * (audit perf 28/11, n°11) Seule la PREMIÈRE variante part avec la boutique (1,2 Mo au lieu de 3,6 — 64 % des octets
+ * d'avant la boutique, 5 à 12 s en 4G). Les suivantes attendent que la scène dise « vitrine affichée et au repos »
+ * (`allowMoreBakes`, appelé par l'ouverture une fois ses visuels prêts), puis qu'aucune ouverture ne soit en cours, puis
+ * un moment calme : le tirage au hasard se fait parmi les variantes arrivées (`loadedBakes`), les autres s'y ajoutent.
+ * Garde-fou : sans signal de la scène, elles partent 30 s après la première.
+ */
+let moreOpen: () => void = () => undefined;
+const moreGate = new Promise<void>((r) => (moreOpen = r));
+let moreRest: () => boolean = () => true;
+export function allowMoreBakes(atRest: () => boolean = () => true): void {
+  moreRest = atRest;
+  moreOpen();
+}
+async function moreWait(): Promise<void> {
+  await Promise.race([moreGate, new Promise((r) => setTimeout(r, 30000))]);
+  while (!moreRest()) await new Promise((r) => setTimeout(r, 1000));
+  await new Promise<void>((r) => ('requestIdleCallback' in window ? (window as Window & { requestIdleCallback(cb: () => void, o?: { timeout: number }): number }).requestIdleCallback(() => r(), { timeout: 3000 }) : setTimeout(r, 300)));
+}
+
+/** Lance (une fois) le chargement d'une famille : la première variante tout de suite, les suivantes au repos, l'une après l'autre. */
 export function loadBakes(fam: BakeFamily): Promise<TearBake | null> {
   const st = state[fam];
   if (st.loading) return st.loading[0];
@@ -98,7 +118,7 @@ export function loadBakes(fam: BakeFamily): Promise<TearBake | null> {
   st.loading = [first];
   let chain: Promise<unknown> = first;
   for (let i = 1; i < FAMILIES[fam].n; i++) {
-    const p = chain.then(() => (st.gen === gen ? fetchBake(fam, i) : null)).then(keep);
+    const p = chain.then(moreWait).then(() => (st.gen === gen ? fetchBake(fam, i) : null)).then(keep);
     st.loading.push(p);
     chain = p;
   }
