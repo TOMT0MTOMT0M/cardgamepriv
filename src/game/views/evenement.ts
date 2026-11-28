@@ -300,6 +300,7 @@ export function createEvenementView(backend: GameBackend, shell: Shell): Eveneme
   // ── neige : une quarantaine de flocons sur un canevas 2D, seulement tant que la page est affichée
   const snow = q<HTMLCanvasElement>('.av-snow');
   let snowRaf = 0;
+  let snowRo: ResizeObserver | null = null;
   function startSnow() {
     const ctx = snow.getContext('2d');
     if (!ctx || snowRaf) return;
@@ -315,12 +316,7 @@ export function createEvenementView(backend: GameBackend, shell: Shell): Eveneme
     size();
     const flakes = Array.from({ length: 42 }, () => ({ x: Math.random(), y: Math.random(), r: 0.6 + Math.random() * 1.7, v: 0.012 + Math.random() * 0.03, w: Math.random() * Math.PI * 2, a: 0.18 + Math.random() * 0.5 }));
     let last = performance.now();
-    const frame = (now: number) => {
-      if (!el.isConnected) return void (snowRaf = 0);
-      snowRaf = requestAnimationFrame(frame);
-      if (box.clientWidth !== W || box.clientHeight !== H) size();
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
+    const draw = (dt: number) => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
       ctx.fillStyle = '#fff';
@@ -334,6 +330,22 @@ export function createEvenementView(backend: GameBackend, shell: Shell): Eveneme
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+    };
+    // (audit perf n°12) la taille du panneau est suivie par un ResizeObserver : plus de lecture de `clientWidth` / `clientHeight`
+    // à chaque image (mise en page ou recalcul de style forcé dans le rAF, 337 lectures forcées pour 3,5 s au téléphone)
+    snowRo?.disconnect();
+    snowRo = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => {
+      if (!el.isConnected || (box.clientWidth === W && box.clientHeight === H)) return;
+      size();
+      draw(0); // (redimensionner vide la toile : on la redessine tout de suite, pas une image plus tard)
+    });
+    snowRo?.observe(box);
+    const frame = (now: number) => {
+      if (!el.isConnected) return void (snowRaf = 0);
+      snowRaf = requestAnimationFrame(frame);
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      draw(dt);
     };
     snowRaf = requestAnimationFrame(frame);
   }
@@ -398,6 +410,8 @@ export function createEvenementView(backend: GameBackend, shell: Shell): Eveneme
       clearInterval(timer);
       cancelAnimationFrame(snowRaf);
       snowRaf = 0;
+      snowRo?.disconnect();
+      snowRo = null;
     },
   };
 }

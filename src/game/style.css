@@ -959,6 +959,8 @@ body.offline .offline-pill { opacity: 1; transform: translate(-50%, 0); }
 .me .st-btn.ready { color: var(--gold); }
 /* audit 06/11 : un transform sur un <path> SVG n'est pas composité (1 layout complet par image) → sur le SVG entier */
 .me .st-btn.ready > svg { transform-origin: 50% 100%; animation: st-flicker 1.6s ease-in-out infinite; }
+/* (audit perf n°12) au téléphone le bouton vit dans le menu de l'avatar : fermé il est invisible, et son animation tournait quand même (jamais composée → recalcul de style + recomposition de TOUTE la page à chaque image, 3 ms par image sur la page Événement) ; elle ne tourne que menu ouvert */
+.me-menu:not(.on) .st-btn.ready > svg { animation: none; }
 .me .st-btn.ready .st-n { background: var(--gold); color: #000000; border-color: var(--gold); box-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
 @keyframes st-flicker { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.08) translateY(-1px); } }
 /* pastilles : doré = récompense à prendre / à saisir (UX1-19) ; le pity proche du seuil passe aussi en or */
