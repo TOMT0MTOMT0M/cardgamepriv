@@ -1,6 +1,34 @@
 # Audit de performances de la V3 (téléphone d'abord, puis serveur)
 
-Chantier : racine / `v2`. Qui : Tom + Claude. Ouvert le 27/11/2026. Rien n'est codé, rien n'est lancé.
+Chantier : racine / `v2`. Qui : Tom + Claude. Ouvert le 27/11/2026. Audit fait la nuit du 27 au 28/11, corrections le 28/11 : sur `v2` et EN LIGNE sur le lien V3 (`f2b7e3f`), pas chez les joueurs (elles partiront avec la V3).
+
+## Corrections (28/11) — mesures au PC (Chrome sans fenêtre, processeur ralenti ×4, écran du téléphone émulé)
+Rapport de l'audit : `.claude-tmp/audit-perf/COMPTE-RENDU.md` (n° = ligne du tableau). Outils de mesure : `.claude-tmp/audit-perf/outils/bench-*.mjs`.
+
+| n° | Correction | Avant → après | Commit |
+|---|---|---|---|
+| 1, 9 | Fil « Gros tirages » : plus de recalcul de style forcé à chaque défilement ; compte à rebours d'événement de la boutique n'écrit plus que ce qui change | recalculs forcés 481 (805 ms / 20 s) → 0 | `50eaea9` |
+| 3 | Canvas 2D relus (sachets, plis, autocollants, vignettes) créés en lecture CPU ; 6e pli enfin mis en cache | relectures GPU par lancement 24-26 → 12 ; cache des plis 10 → 12 | `50eaea9` |
+| 16 | Démo (`?demo`) : pas de connexion Convex ouverte d'office | 1 WebSocket permanente → 0 (sauf le rapport de chargement unique) | `50eaea9`, `5e78015` |
+| 13 | Mise à jour : fichiers non hachés revalidés par ETag | patch simulé : 80 fichiers retéléchargés → 5 | `271c7d1` |
+| 2, 6 | Cartes témoins compilées après la boutique ; chaque carte compilée hors scène avant d'être posée | boutique visible ≈ 5,1 → 4,0 s ; ouverture 796 ms d'à-coups → 0 ; visionneuse 166-242 ms → ≈ 0 | `7125ab8` |
+| 4 | Boutique calme gardée pendant l'invite | 44 → 36 images dessinées / s | `7125ab8` |
+| 7 | Sons, textures Pokébox, bruit, nom moulé mis en cache (`bebou-calc`, versionné : `SOUND_REV`, `TEX_REV`, `NOISE_REV`) | calcul des workers 541-586 ms → ≤ 1 ms par lancement ; ≈ 12 Mo de cache en plus | `5ad02fc` |
+| 5, 11 | Données mobiles : musiques et effets plus téléchargés d'office ; une seule variante de déchirure avant la boutique | 4,06 → 2,92 Mo avant la boutique | `a1770bc`, `b390a96` |
+| 12 | Flamme du bouton Série animée seulement menu ouvert ; lueur du jour J par opacité ; neige au ResizeObserver | page Événement 5,4 → 1,4 ms / image | `0925e3a` |
+| 8, 14, 15 | Mises en page forcées retirées (morph, main, chat, pastilles, mises à jour fermées) ; Échanges / Collection en sommeil quand cachées ; dessins de Jeux en une seule boucle | Échanges et chat jusqu'à 2× plus rapides à l'arrivée | `69820b4` `e8c03a7` `aeadc39` `340b86f` |
+| 10 | Catalogue retiré des modules Convex qui ne le lisent pas (nouveaux `launchGate.ts`, `cardRarity.ts`, `rappels.ts`) ; tâche horaire renommée `rappels:remindTick` | modules qui chargent le catalogue 42/53 → 31/56 | `60b2ad9` |
+| 17 | Retours Convex allégés | `games:history` 441 → 32 Ko ; `session.get` 6,2 → 5,8 Ko | `a6eab12` |
+
+Vérifié : typecheck jeu + Convex, `check:i18n`, `test:server` 373/373, `test:sound`, `test:rolls` ; démarrage, ouverture complète et 9 pages sans erreur au PC puis sur le lien V3.
+Staging Convex, premiers appels après la mise en ligne (1 à 2 appels seulement, à confirmer en prod) : `inventory:mineSince` 219 → 28 ms, `launch:status` 247 → 20 ms, `friends:mine` 307 → 90 ms (médianes avant) ; `rappels:remindTick` tourne (13 h), 0 erreur.
+
+Laissés exprès :
+- 302 réécritures du cache GPU par lancement : faites par Chrome Android, les shaders du jeu sont identiques d'un lancement à l'autre.
+- Bloom en 14 soumissions : impossible à regrouper sans réécrire le bloom de three.js — le flou réutilise le même matériau pour la passe horizontale et verticale de chaque niveau (seule la direction change), donc une soumission groupée lirait la dernière valeur partout et casserait le halo. Gain en jeu : ≈ 1,2 ms d'envoi par image dessinée. Réduire le nombre de passes changerait le halo (DA).
+- `session.get` : le vrai gain serait d'en sortir la liste d'envies (client à changer).
+
+À faire : essai de Tom au téléphone (liste dans EN-COURS) ; coût Convex à remesurer en prod après la sortie de la V3 (`node scripts/cout-convex.mjs`).
 
 ## Fait (27/11, 23 h)
 - **Master prompt écrit**, prêt à coller dans une session neuve ouverte dans le dossier racine : `.claude-tmp/audit-perf/MASTER-PROMPT.md` (dossier hors git, PC de Tom seulement).

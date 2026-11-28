@@ -9,7 +9,7 @@ Branche `v3-notifs` (tirée de `v2` 0260592). Lignes d'EN-COURS : « Notificatio
 - **Roulette** : résultat envoyé aux joueurs qui ont misé et perdu (« Roulette : le n° 17 est sorti — X rafle le pot » ou « le pot passe au tirage suivant »), type « Jeux » ; le gagnant garde son push habituel. Avertissement « tirage dans 10 min » traduit FR / EN (il était en français pour tout le monde).
 - **Réglages** : 2 cases de plus (« Série en danger », « Missions et cadeau du jour »), actives par défaut, y compris pour qui avait déjà réglé ses notifications en V2 (marque `~v3` posée quand les réglages V3 sont enregistrés).
 - **Correctif** trouvé par les tests : l'heure de Paris de `convex/push.ts` lisait « 22 h » → NaN, donc la nuit (23 h - 8 h) n'était JAMAIS reconnue : push d'échange / ami / jeux / chat envoyés en pleine nuit au lieu d'être reportés à 8 h, réserve pleine et annonces envoyées la nuit ; titre de la roulette « tirage de NaN h ». Corrigé (fonction de `src/core/games.ts`).
-- Cron : `crons.hourly('push : rappels série et missions', …)` → `push.remindTick`.
+- Cron : `crons.hourly('push : rappels serie et missions', …)` → `rappels.remindTick` (avant le 28/11 : `push.remindTick`, déplacé dans `convex/rappels.ts` par l'audit perf V3 n°10, même code ; dans les journaux, la fonction s'appelle `rappels:remindTick`).
 
 ## Décidé (notifs)
 - Événement « roulette » retenu : le résultat d'un tirage auquel le joueur a misé (il n'avait qu'une pastille). Écartés : rappel de la mise gratuite de l'abonné (déjà 2 push roulette par jour avec l'avertissement), tirage programmé (existe déjà).
