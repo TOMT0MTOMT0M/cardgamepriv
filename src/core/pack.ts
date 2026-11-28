@@ -374,7 +374,7 @@ async function simplePackArt(style: PackStyle, release = false): Promise<PackArt
   // (06/11, ultra-réalisme) sachet NU : la couleur de l'aluminium, rien d'écrit. Le froissé est propre au sachet
   // (une carte de hauteur pleine taille, pas une tuile répétée), avec de vrais plis : réseau de plis principaux
   // (arêtes tendues entre points), micro-plis secondaires, bombé du coussin et soudures crantées.
-  const F = makeCanvas(PW, PH), B = makeCanvas(PW, PH), M = makeCanvas(PW, PH);
+  const F = makeCanvas(PW, PH, true), B = makeCanvas(PW, PH), M = makeCanvas(PW, PH); // (F relue : nom moulé, vignette)
   const base = style.ground;
   const alloyK = style.alloyMix ?? 0.66;
   const alloy = mixHex(base, '#eceef1', alloyK);
@@ -518,7 +518,7 @@ async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCan
   // couverture du texte (rastérisation ×2 avec la police du jeu : quelques ms, sur le thread principal)
   let cov: Uint8ClampedArray | undefined;
   if (!relief) {
-    const L = makeCanvas(w * ss, h * ss);
+    const L = makeCanvas(w * ss, h * ss, true);
     L.g.fillStyle = '#fff';
     L.g.font = `400 ${px * ss}px ${FONT_PACK}`;
     L.g.textAlign = 'center';
@@ -560,7 +560,7 @@ async function moldedLabel(F: { c: HTMLCanvasElement; g: Ctx }, creaseN: HTMLCan
   }
   F.g.putImageData(fimg, x0, y0);
   // vignette 2D : la même face, le relief éclairé une fois (lumière haut-gauche), seulement sur la zone du nom
-  const T = makeCanvas(PW, PH);
+  const T = makeCanvas(PW, PH, true); // (relue ici, puis source de la vignette `packThumb`)
   T.g.drawImage(F.c, 0, 0);
   const timg = T.g.getImageData(x0, y0, rw, rh);
   for (let k = 0; k < rw * rh; k++) {
@@ -657,7 +657,7 @@ async function creaseFromCache(ch: number, seed: number): Promise<CreaseMaps | n
   const load = async (r: Response) => {
     const bmp = await createImageBitmap(await r.blob(), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
     if (bmp.width !== CRW || bmp.height !== CRH) return null;
-    const C = makeCanvas(CRW, CRH);
+    const C = makeCanvas(CRW, CRH, true); // (normales relues par le nom moulé)
     C.g.drawImage(bmp, 0, 0);
     bmp.close();
     return C.c;
@@ -672,13 +672,31 @@ function creaseToCache(ch: number, seed: number, m: CreaseMaps): void {
   // encodage et écriture après l'affichage de la boutique (hors du chemin critique)
   const put = (cv: HTMLCanvasElement, kind: 'h' | 'n') =>
     cv.toBlob((blob) => {
+      releaseCanvas(cv === m.c || cv === m.n ? null : cv);
       if (!blob) return;
       void caches
         .open(CREASE_STORE)
         .then((cache) => cache.put(creaseKey(ch, seed, kind), new Response(blob, { headers: { 'content-type': 'image/png' } })))
         .catch(() => undefined);
     }, 'image/png');
-  const go = () => (put(m.c, 'h'), put(m.n, 'n'));
+  // (audit perf 28/11) copie prise TOUT DE SUITE : la toile est vidée dès son envoi au GPU, souvent avant le moment
+  // calme — la carte du dernier sachet n'était alors jamais enregistrée (recalculée à chaque lancement, 1-3 s de
+  // worker au téléphone). Alpha à 255 partout : la copie est sans perte.
+  const snap = typeof createImageBitmap === 'function' ? Promise.all([createImageBitmap(m.c), createImageBitmap(m.n)]).catch(() => null) : null;
+  const go = () => {
+    if (!snap) return void (put(m.c, 'h'), put(m.n, 'n'));
+    void snap.then((b) => {
+      if (!b) return;
+      const [h, n] = b.map((bmp) => {
+        const C = makeCanvas(CRW, CRH, true);
+        C.g.drawImage(bmp, 0, 0);
+        bmp.close();
+        return C.c;
+      });
+      put(h, 'h');
+      put(n, 'n');
+    });
+  };
   if ('requestIdleCallback' in window) (window as Window & { requestIdleCallback(cb: () => void, o?: { timeout: number }): number }).requestIdleCallback(go, { timeout: 8000 });
   else setTimeout(go, 3000);
 }
@@ -733,7 +751,7 @@ function paintCreaseMap(ch: number, seed: number): CreaseMaps {
   return creaseCanvases(creaseMapData(ch, seed));
 }
 function creaseCanvases(d: { h: Uint8ClampedArray; n: Uint8ClampedArray }): CreaseMaps {
-  const C = makeCanvas(CRW, CRH), N = makeCanvas(CRW, CRH);
+  const C = makeCanvas(CRW, CRH, true), N = makeCanvas(CRW, CRH, true); // (relues : nom moulé, cache des plis)
   C.g.putImageData(new ImageData(d.h as Uint8ClampedArray<ArrayBuffer>, CRW, CRH), 0, 0);
   N.g.putImageData(new ImageData(d.n as Uint8ClampedArray<ArrayBuffer>, CRW, CRH), 0, 0);
   return { c: C.c, n: N.c };

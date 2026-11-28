@@ -183,19 +183,21 @@ interface Stk {
  */
 function stk(w: number, h: number, draw: (g: Ctx, w: number, h: number) => void, o: { cut?: number; cutCol?: string; gloss?: number } = {}): Stk {
   const b = o.cut ?? 0, pad = Math.ceil(b) + 3;
-  const A = makeCanvas(Math.ceil(w + pad * 2), Math.ceil(h + pad * 2));
+  // (audit perf 28/11) toiles en mémoire vive (`readBack`) : collées sur la face du sachet, elle aussi en mémoire vive
+  // (relue par le nom moulé) — une toile accélérée collée là serait relue sur le GPU à chaque collage
+  const A = makeCanvas(Math.ceil(w + pad * 2), Math.ceil(h + pad * 2), true);
   A.g.translate(pad, pad);
   A.g.lineJoin = 'round';
   A.g.lineCap = 'round';
   draw(A.g, w, h);
   const gloss = o.gloss ?? 0.25;
   if (!b) return { c: A.c, gloss };
-  const S = makeCanvas(A.c.width, A.c.height);
+  const S = makeCanvas(A.c.width, A.c.height, true);
   S.g.drawImage(A.c, 0, 0);
   S.g.globalCompositeOperation = 'source-in';
   S.g.fillStyle = o.cutCol ?? '#fff';
   S.g.fillRect(0, 0, S.c.width, S.c.height);
-  const O = makeCanvas(A.c.width, A.c.height);
+  const O = makeCanvas(A.c.width, A.c.height, true);
   for (let i = 0; i < 28; i++) O.g.drawImage(S.c, Math.cos((i / 28) * TAU) * b, Math.sin((i / 28) * TAU) * b);
   O.g.drawImage(S.c, 0, 0);
   O.g.drawImage(A.c, 0, 0);
@@ -245,7 +247,7 @@ function placer(fronts: Ctx[], back: Ctx, mask: Ctx, seed: number, name: NameBox
     g.restore();
   };
   const silhouette = (s: Stk, col: string) => {
-    const t = makeCanvas(s.c.width, s.c.height);
+    const t = makeCanvas(s.c.width, s.c.height, true);
     t.g.drawImage(s.c, 0, 0);
     t.g.globalCompositeOperation = 'source-in';
     t.g.fillStyle = col;

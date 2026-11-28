@@ -1047,16 +1047,18 @@ export function createShopView(backend: GameBackend, shell: Shell, opening: Open
   function tickEvent() {
     const now = Date.now();
     if (ev && now >= ev.endAt) return setEvents([]);
+    // (audit perf 28/11) n'écrire que ce qui change : le texte bouge au plus une fois par minute (sauf la dernière),
+    // et chaque réécriture relançait les observateurs et un recalcul de style d'environ 660 éléments, chaque seconde
+    const setText = (e: Element, t: string) => e.textContent !== t && (e.textContent = t);
     for (const b of el.querySelectorAll<HTMLElement>('[data-ev-left]')) {
       const end = Number(b.dataset.evLeft);
-      if (end > 0) b.textContent = fmtLeft(end - now);
+      if (end > 0) setText(b, fmtLeft(end - now));
     }
     // (V3, packs événement) réserve propre du booster d'événement et sa recharge (1 / h)
     const u = backend.state.user;
     const resEl = band.querySelector<HTMLElement>('.ev-res')!;
-    resEl.hidden = !ev || !u;
+    if (resEl.hidden !== (!ev || !u)) resEl.hidden = !ev || !u;
     if (ev && u) {
-      const setText = (e: Element, t: string) => e.textContent !== t && (e.textContent = t);
       const r = liveReserve(u, ev, now);
       setText(resEl.querySelector('b')!, `${r.balance}/${u.evCap ?? EVENT_CAP}`);
       setText(resEl.querySelector('small')!, r.balance < (u.evCap ?? EVENT_CAP) && r.nextAt ? tr('shop.evNext', { time: fmtLeft(r.nextAt - now) }) : tr('shop.evRes'));

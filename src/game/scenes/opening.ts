@@ -3185,7 +3185,8 @@ export function createOpeningScene(): OpeningScene {
       const c = document.createElement('canvas');
       c.width = w;
       c.height = h;
-      const g = c.getContext('2d')!;
+      // (audit perf 28/11) en mémoire vive : `toBlob` relit la toile — accélérée, il attendait la file du GPU
+      const g = c.getContext('2d', { willReadFrequently: true })!;
       g.imageSmoothingQuality = 'high';
       g.drawImage(src, 0, 0, w, h);
       // (audit PERF2-18) encodage asynchrone hors du thread principal, WebP (≈ 5× plus léger ; PNG si non pris en charge),

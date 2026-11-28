@@ -162,6 +162,8 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
   let pos = 0;
   /** dernière position écrite par la boucle : un `scroll` qui s'en écarte vient de l'utilisateur */
   let written = 0;
+  /** la boucle vient d'écrire la position : le prochain `scroll` est le sien, pas celui de l'utilisateur */
+  let selfScroll = false;
   let period = 0;
   let clones = false;
   let renders = 0;
@@ -222,7 +224,9 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
   // au doigt : l'éventail suit le défilement (une mise à jour par image)
   let fanRaf = 0;
   list.addEventListener('scroll', () => {
-    if (!fanOn || fanRaf) return;
+    // (audit perf 28/11) défilement écrit par la boucle : l'éventail est déjà posé (`tick`) — relire `scrollTop` ici
+    // forçait un recalcul de style par image (animations CSS du fil en cours)
+    if (!fanOn || fanRaf || selfScroll) return;
     fanRaf = requestAnimationFrame(() => ((fanRaf = 0), fan()));
   }, { passive: true });
   // taille du fil changée (affichage, rotation, colonne ↔ bandeau) : on le reconstruit (doublé ou non)
@@ -239,6 +243,7 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
   // à la main (molette, doigt) : le défilement automatique laisse la main quelques secondes
   const hold = () => {
     holdUntil = performance.now() + 2500;
+    selfScroll = false; // (le prochain `scroll` est celui du doigt ou de la molette)
     list.style.scrollSnapType = '';
     clearTimeout(snapT);
     snapT = window.setTimeout(() => clones && (list.style.scrollSnapType = 'none'), 2600);
@@ -342,11 +347,18 @@ export function createBigPulls(backend: GameBackend, view: (card: PackCard) => v
     setScroll(pos);
     // (lue tout de suite après l'écriture : la mise en page vient d'être faite pour l'écriture, la lecture ne coûte rien)
     written = getScroll();
+    selfScroll = true;
     fan(written);
   }
   document.addEventListener('visibilitychange', wake);
   // au bout de la copie à la main : on reboucle aussi
   list.addEventListener('scroll', () => {
+    // (audit perf 28/11) l'événement qui suit une écriture de la boucle : position déjà connue (`written`), rebouclage
+    // déjà fait par `tick` — aucune lecture (elle forçait un 2e recalcul de style par image)
+    if (selfScroll) {
+      selfScroll = false;
+      return;
+    }
     const cur = getScroll();
     // l'utilisateur a bougé le fil : on repart de là où il l'a laissé
     if (Math.abs(cur - written) > 2) written = pos = cur;

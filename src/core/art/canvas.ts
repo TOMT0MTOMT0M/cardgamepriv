@@ -2,11 +2,16 @@ import { rng } from '../ease';
 
 export type Ctx = CanvasRenderingContext2D;
 
-export function makeCanvas(w: number, h: number): { c: HTMLCanvasElement; g: Ctx } {
+/**
+ * `readBack` (audit perf 28/11) : toile RELUE (getImageData, toBlob, source d'un drawImage relu) — gardée en mémoire
+ * vive plutôt que sur le GPU. Sur une toile accélérée, chaque relecture attend toute la file du GPU du téléphone
+ * (sachets : 24-40 relectures, 1,3-1,9 s de fil principal bloqué par démarrage, contre 0,16 s au PC).
+ */
+export function makeCanvas(w: number, h: number, readBack = false): { c: HTMLCanvasElement; g: Ctx } {
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
-  const g = ctx2d(c, { willReadFrequently: false });
+  const g = ctx2d(c, { willReadFrequently: readBack });
   return { c, g };
 }
 

@@ -199,6 +199,8 @@ if (typeof window !== 'undefined') (window as unknown as { __netEmits?: () => nu
 
 class GameNetClient {
   private client: ConvexClient | null = null;
+  /** démo : adresse du serveur, client créé seulement au premier envoi de diagnostic */
+  private lazyUrl: string | null = null;
   private sessionToken: string | null = null;
   private unsubscribers: Array<() => void> = [];
   /** fil d'activité complet (`feed.recent`) : demandé par le HUD du labo ; le jeu lit `feed.bigPulls` (repli : le fil) */
@@ -249,6 +251,13 @@ class GameNetClient {
 
     const convexUrl = (import.meta.env.VITE_CONVEX_URL as string | undefined)?.trim();
     if (!convexUrl) {
+      return;
+    }
+    // (audit perf 28/11) démo (`?demo`, backend local) : ce module est chargé quand même (diagnostic) — plus de
+    // WebSocket ni d'abonnements pour rien (3 à 5 exécutions serveur par démo lancée, table `presence` lue en entier) ;
+    // le client n'est créé qu'au premier envoi de diagnostic (`pushLabFeedback`)
+    if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('demo')) {
+      this.lazyUrl = convexUrl;
       return;
     }
 
@@ -1413,6 +1422,7 @@ class GameNetClient {
     entries: Array<{ id: string; title: string; category: string; vote: number; note: string; updatedAt?: string | null }>;
     meta: { backend?: string; userAgent?: string; quality?: string; dpr?: number };
   }) {
+    if (!this.client && this.lazyUrl) this.client = new ConvexClient(this.lazyUrl);
     if (!this.client) throw new Error('Serveur non configuré (VITE_CONVEX_URL)');
     return await this.client.mutation(api.labFeedback.submit, { ...args, sessionToken: this.sessionToken ?? undefined });
   }
