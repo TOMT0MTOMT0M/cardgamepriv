@@ -328,10 +328,17 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     newBelow = 0;
     syncJump();
   };
+  // (audit perf n°8) le bouton n'est réécrit que s'il change : réécrire son contenu invalidait la mise en page, et la lecture de
+  // `atBottom()` à l'appel suivant la refaisait en entier (plusieurs fois à l'ouverture du chat : 296 ms)
+  let jumpHtml = '';
   function syncJump() {
     const show = !atBottom();
-    jumpBtn.hidden = !show;
-    jumpBtn.innerHTML = newBelow ? `<i>↓</i> ${tr('chat.newBelow', { n: newBelow })}` : '<i>↓</i>';
+    if (jumpBtn.hidden === show) jumpBtn.hidden = !show;
+    const html = newBelow ? `<i>↓</i> ${tr('chat.newBelow', { n: newBelow })}` : '<i>↓</i>';
+    if (html !== jumpHtml || !jumpBtn.firstChild) {
+      jumpHtml = html;
+      jumpBtn.innerHTML = html;
+    }
     jumpBtn.classList.toggle('new', newBelow > 0);
   }
 
@@ -405,8 +412,9 @@ export function createChat(backend: GameBackend, o: { sound?: (k: 'in' | 'out' |
     const staff = !!(store.inbox?.staff || backend.state.user?.staff);
     const head = store.head(key);
     const stick = reason === 'switch' || atBottom();
-    const prevH = thread.scrollHeight;
-    const prevTop = thread.scrollTop;
+    // (audit perf n°8) hauteur et défilement d'avant : seulement pour « plus anciens » (lecture forcée de mise en page sinon, 296 ms à l'ouverture)
+    const prevH = reason === 'older' ? thread.scrollHeight : 0;
+    const prevTop = reason === 'older' ? thread.scrollTop : 0;
 
     type Item = { at: number; m?: ChatMsg; p?: BigPull };
     const items: Item[] = c.msgs.map((m) => ({ at: m.at, m }));

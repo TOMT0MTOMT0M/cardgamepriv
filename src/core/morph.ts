@@ -185,44 +185,69 @@ export function segIndicator(seg: HTMLElement) {
   segDone.add(seg);
   let ind: HTMLElement | null = null;
   let last: Box | null = seg.dataset.segKey ? segLast.get(seg.dataset.segKey) ?? null : null;
-  const place = (animate: boolean) => {
-    if (!seg.isConnected) return;
-    if (!ind || ind.parentElement !== seg) {
-      ind = document.createElement('i');
-      ind.className = 'seg-ind';
-      ind.setAttribute('aria-hidden', 'true');
-      seg.prepend(ind);
-      seg.classList.add('has-ind');
-    }
-    const on = seg.querySelector<HTMLElement>(':scope > button.on, :scope > button[aria-checked="true"], :scope > a.on');
-    if (!on || !on.offsetWidth) return void (ind.style.opacity = '0');
-    const b: Box = { x: on.offsetLeft, y: on.offsetTop, w: on.offsetWidth, h: on.offsetHeight };
-    const s = ind.style;
-    // la pastille prend le fond que l'onglet actif aurait eu (blanc plein ici, voile gris là) : on le lit une fois,
-    // sans la règle qui le rend transparent
-    seg.classList.add('ind-measure');
-    const cs = getComputedStyle(on);
-    const bg = cs.backgroundColor;
-    const bgi = cs.backgroundImage;
-    seg.classList.remove('ind-measure');
-    const clear = (bgi === 'none' || !bgi) && /^rgba\(0, 0, 0, 0\)$|^transparent$/.test(bg);
-    s.background = clear ? '' : `${bgi !== 'none' ? `${bgi}, ` : ''}${bg}`;
-    s.opacity = '1';
-    s.width = `${b.w}px`;
-    s.height = `${b.h}px`;
-    s.transform = `translate(${b.x}px, ${b.y}px)`;
-    if (animate && last && (Math.abs(last.x - b.x) > 1 || Math.abs(last.w - b.w) > 1) && !reducedMotion()) {
-      ind.animate(
-        [
-          { transform: `translate(${last.x}px, ${last.y}px)`, width: `${last.w}px`, height: `${last.h}px` },
-          { transform: s.transform, width: s.width, height: s.height },
-        ],
-        { duration: coarse() ? 420 : 360, easing: EASING.entree },
-      );
-    }
-    last = b;
-    if (seg.dataset.segKey) segLast.set(seg.dataset.segKey, b);
+  let on: HTMLElement | null = null;
+  let box: Box | null = null;
+  let bg = '';
+  let bgi = '';
+  let measuring = false;
+  const job: SegJob = {
+    animate: false,
+    // 1. écritures : pastille posée, classe de mesure
+    prep() {
+      if (!seg.isConnected) return false;
+      if (!ind || ind.parentElement !== seg) {
+        ind = document.createElement('i');
+        ind.className = 'seg-ind';
+        ind.setAttribute('aria-hidden', 'true');
+        seg.prepend(ind);
+        seg.classList.add('has-ind');
+      }
+      on = seg.querySelector<HTMLElement>(':scope > button.on, :scope > button[aria-checked="true"], :scope > a.on');
+      box = null;
+      // la pastille prend le fond que l'onglet actif aurait eu (blanc plein ici, voile gris là) : on le lit une fois,
+      // sans la règle qui le rend transparent
+      if (on) {
+        seg.classList.add('ind-measure');
+        measuring = true;
+      }
+      return true;
+    },
+    // 2. lectures (toutes les pastilles de la salve : une seule mise en page, un seul recalcul de style)
+    read() {
+      if (!on || !on.offsetWidth) return;
+      box = { x: on.offsetLeft, y: on.offsetTop, w: on.offsetWidth, h: on.offsetHeight };
+      const cs = getComputedStyle(on);
+      bg = cs.backgroundColor;
+      bgi = cs.backgroundImage;
+    },
+    // 3. écritures
+    write() {
+      if (measuring) seg.classList.remove('ind-measure');
+      measuring = false;
+      const i = ind!;
+      if (!box) return void (i.style.opacity = '0');
+      const b = box;
+      const s = i.style;
+      const clear = (bgi === 'none' || !bgi) && /^rgba\(0, 0, 0, 0\)$|^transparent$/.test(bg);
+      s.background = clear ? '' : `${bgi !== 'none' ? `${bgi}, ` : ''}${bg}`;
+      s.opacity = '1';
+      s.width = `${b.w}px`;
+      s.height = `${b.h}px`;
+      s.transform = `translate(${b.x}px, ${b.y}px)`;
+      if (job.animate && last && (Math.abs(last.x - b.x) > 1 || Math.abs(last.w - b.w) > 1) && !reducedMotion()) {
+        i.animate(
+          [
+            { transform: `translate(${last.x}px, ${last.y}px)`, width: `${last.w}px`, height: `${last.h}px` },
+            { transform: s.transform, width: s.width, height: s.height },
+          ],
+          { duration: coarse() ? 420 : 360, easing: EASING.entree },
+        );
+      }
+      last = b;
+      if (seg.dataset.segKey) segLast.set(seg.dataset.segKey, b);
+    },
   };
+  const place = (animate: boolean) => queueSeg(job, animate);
   place(true);
   new MutationObserver((ms) => {
     // (nos propres changements — pastille ajoutée, classes posées sur le contrôle lui-même — ne relancent rien)
@@ -230,6 +255,36 @@ export function segIndicator(seg: HTMLElement) {
     place(true);
   }).observe(seg, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'aria-checked'] });
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => place(false)).observe(seg);
+}
+
+/**
+ * (audit perf n°8) Les pastilles d'une même salve (une page qui s'affiche en porte plusieurs, la 1re visite en pose
+ * 5 à 14) se placent ENSEMBLE : toutes les écritures, puis toutes les lectures, puis toutes les écritures. Avant, chacune
+ * posait sa pastille puis lisait aussitôt ses positions : une mise en page complète de la page par pastille
+ * (100-180 ms à la 1re visite d'une page au téléphone). La salve part en micro-tâche : avant l'affichage, comme avant.
+ */
+interface SegJob {
+  animate: boolean;
+  prep(): boolean;
+  read(): void;
+  write(): void;
+}
+const segPending = new Set<SegJob>();
+let segFlushQueued = false;
+function queueSeg(job: SegJob, animate: boolean) {
+  job.animate ||= animate;
+  segPending.add(job);
+  if (segFlushQueued) return;
+  segFlushQueued = true;
+  queueMicrotask(() => {
+    segFlushQueued = false;
+    const jobs = [...segPending];
+    segPending.clear();
+    const live = jobs.filter((j) => j.prep());
+    for (const j of live) j.read();
+    for (const j of live) j.write();
+    for (const j of jobs) j.animate = false;
+  });
 }
 
 /**
